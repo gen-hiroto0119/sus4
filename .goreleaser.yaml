@@ -1,0 +1,89 @@
+version: 2
+
+project_name: tetra
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tetra
+    main: ./cmd/tetra
+    binary: tetra
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: tetra
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-next'
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - 'merge conflict'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+
+release:
+  github:
+    owner: gen-hiroto0119
+    name: tetra
+  draft: false
+  prerelease: auto
+  header: |
+    ## tetra {{ .Tag }}
+
+    A silent code viewer for the AI coding era.
+
+    Install via `go install github.com/gen-hiroto0119/tetra/cmd/tetra@{{ .Tag }}` or download a binary below.
+
+# Homebrew tap publishing — uncomment after creating gen-hiroto0119/homebrew-tap
+# and adding a HOMEBREW_TAP_TOKEN secret with `repo` scope.
+#
+# brews:
+#   - name: tetra
+#     repository:
+#       owner: gen-hiroto0119
+#       name: homebrew-tap
+#       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
+#     homepage: 'https://github.com/gen-hiroto0119/tetra'
+#     description: 'A silent code viewer for the AI coding era.'
+#     license: MIT
+#     install: |
+#       bin.install "tetra"
+#     test: |
+#       system "#{bin}/tetra", "--help"
