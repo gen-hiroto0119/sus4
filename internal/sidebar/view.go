@@ -94,9 +94,9 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	switch {
 	case r.tree != nil:
 		expanded := r.tree.node.Kind == filetree.NodeDir && m.expanded[r.tree.node.Path]
-		content = renderTreeRow(*r.tree, expanded)
+		content = renderTreeRow(*r.tree, expanded, m.iconsOn)
 	case r.change != nil:
-		content = renderChangeRow(*r.change)
+		content = renderChangeRow(*r.change, m.iconsOn)
 	}
 	content = truncate(content, w)
 	if selected {
@@ -105,7 +105,7 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	return content
 }
 
-func renderTreeRow(tr treeRow, expanded bool) string {
+func renderTreeRow(tr treeRow, expanded, withIcon bool) string {
 	indent := strings.Repeat("  ", tr.depth)
 	if tr.node.Kind == filetree.NodeTruncated {
 		return fmt.Sprintf("%s… (+%d more)", indent, tr.node.HiddenCount)
@@ -118,12 +118,18 @@ func renderTreeRow(tr treeRow, expanded bool) string {
 			expandArrow = "▸ "
 		}
 	}
+	if !withIcon {
+		return indent + expandArrow + tr.node.Name
+	}
 	ic := icons.For(tr.node, expanded)
 	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
 	return indent + expandArrow + glyph + " " + tr.node.Name
 }
 
-func renderChangeRow(cr changeRow) string {
+func renderChangeRow(cr changeRow, withIcon bool) string {
+	if !withIcon {
+		return fmt.Sprintf("%s  %s", statusGlyph(cr.entry.Kind), cr.entry.Path)
+	}
 	node := filetree.Node{Name: filepath.Base(cr.entry.Path), Kind: filetree.NodeFile}
 	ic := icons.For(node, false)
 	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)

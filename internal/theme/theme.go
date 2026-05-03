@@ -19,6 +19,16 @@ type Theme struct {
 	Error          lipgloss.Color
 }
 
+// ByName returns the theme matching name. Unknown names — including the
+// empty string — fall back to Default(). v0.1 ships only "default"; the
+// switch is the seam future themes plug into.
+func ByName(name string) Theme {
+	switch name {
+	default:
+		return Default()
+	}
+}
+
 func Default() Theme {
 	return Theme{
 		Background:    lipgloss.Color("0"),

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/gen-hiroto0119/sus4/internal/config"
 	"github.com/gen-hiroto0119/sus4/internal/git"
 	"github.com/gen-hiroto0119/sus4/internal/highlight"
 	"github.com/gen-hiroto0119/sus4/internal/mainview"
@@ -36,6 +37,7 @@ type StartupTarget struct {
 type Options struct {
 	RootDir string
 	Target  StartupTarget
+	Config  config.Config
 }
 
 // Model is the root Bubble Tea model. It aggregates child component
@@ -62,12 +64,16 @@ type Model struct {
 }
 
 func New(opts Options) Model {
+	trueColor := highlight.TerminalSupportsTrueColor()
+	if opts.Config.TrueColor != nil {
+		trueColor = *opts.Config.TrueColor
+	}
 	return Model{
 		opts:      opts,
-		theme:     theme.Default(),
+		theme:     theme.ByName(opts.Config.Theme),
 		focus:     FocusSidebar,
-		sidebar:   sidebar.New(opts.RootDir),
+		sidebar:   sidebar.New(opts.RootDir, opts.Config.Icons),
 		main:      mainview.New(),
-		trueColor: highlight.TerminalSupportsTrueColor(),
+		trueColor: trueColor,
 	}
 }

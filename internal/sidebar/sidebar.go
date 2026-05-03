@@ -57,6 +57,7 @@ type Model struct {
 	mode      Mode
 	rootDir   string
 	repoOK    bool
+	iconsOn   bool
 
 	// Tree state. expanded[path] indicates whether to show children.
 	// children[path] is the cached child list for an expanded directory.
@@ -78,12 +79,13 @@ type Model struct {
 	err    error
 }
 
-func New(rootDir string) Model {
+func New(rootDir string, iconsEnabled bool) Model {
 	return Model{
 		rootDir:  rootDir,
 		expanded: make(map[string]bool),
 		children: make(map[string][]filetree.Node),
 		mode:     ModeTree,
+		iconsOn:  iconsEnabled,
 	}
 }
 
