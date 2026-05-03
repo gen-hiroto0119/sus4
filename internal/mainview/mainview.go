@@ -114,6 +114,13 @@ func (m *Model) ScrollPage(delta int) {
 func (m *Model) ScrollHome() { m.scroll = 0 }
 func (m *Model) ScrollEnd()  { m.scroll = m.maxScroll() }
 
+// ClampScroll re-pins scroll into [0, maxScroll] using the current m.height.
+// Call after a window resize so the previous scroll offset doesn't point
+// past the end of the (now smaller) visible window.
+func (m *Model) ClampScroll() {
+	m.scroll = clamp(m.scroll, 0, m.maxScroll())
+}
+
 func (m *Model) maxScroll() int {
 	total := m.contentLen()
 	if total <= m.height {
@@ -199,22 +206,35 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 	}
 
 	gutterStyle := t.DimStyle()
-	visible := slice(m.fileLines, m.scroll, bodyRows)
-	clipped := make([]string, len(visible))
-	for i, line := range visible {
-		// Hard-truncate to contentW visible cols. Without this, Lipgloss
-		// wraps long lines inside the bordered pane, the body grows past
-		// h, and Bubble Tea's renderer trims the *top* of the View output
-		// to fit (standard_renderer.go ~L186), erasing the top border.
-		text := ansi.Truncate(line, contentW, "")
-		if showGutter {
-			lineNo := m.scroll + i + 1
-			clipped[i] = gutterStyle.Render(fmt.Sprintf("%*d ", gutterDigits, lineNo)) + text
-		} else {
-			clipped[i] = text
+	emptyGutter := gutterStyle.Render(strings.Repeat(" ", gutterDigits) + " ")
+	rows := make([]string, 0, bodyRows)
+	for i, line := range slice(m.fileLines, m.scroll, len(m.fileLines)) {
+		if len(rows) >= bodyRows {
+			break
+		}
+		// Hard-wrap the (possibly ANSI-styled) line to contentW. Each
+		// segment becomes its own visual row so long lines no longer get
+		// silently truncated on the right edge.
+		segments := strings.Split(ansi.Hardwrap(line, contentW, false), "\n")
+		for j, seg := range segments {
+			if len(rows) >= bodyRows {
+				break
+			}
+			if showGutter {
+				var prefix string
+				if j == 0 {
+					lineNo := m.scroll + i + 1
+					prefix = gutterStyle.Render(fmt.Sprintf("%*d ", gutterDigits, lineNo))
+				} else {
+					prefix = emptyGutter
+				}
+				rows = append(rows, prefix+seg)
+			} else {
+				rows = append(rows, seg)
+			}
 		}
 	}
-	body := strings.Join(clipped, "\n")
+	body := strings.Join(rows, "\n")
 
 	if m.fileBanner != "" {
 		banner := t.DimStyle().Render("· " + m.fileBanner)
@@ -234,12 +254,19 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 	}
 
 	rendered := renderDiffLines(t, m.diffLines)
-	visible := slice(rendered, m.scroll, bodyRows)
-	clipped := make([]string, len(visible))
-	for i, line := range visible {
-		clipped[i] = ansi.Truncate(line, w, "")
+	rows := make([]string, 0, bodyRows)
+	for _, line := range slice(rendered, m.scroll, len(rendered)) {
+		if len(rows) >= bodyRows {
+			break
+		}
+		for _, seg := range strings.Split(ansi.Hardwrap(line, w, false), "\n") {
+			if len(rows) >= bodyRows {
+				break
+			}
+			rows = append(rows, seg)
+		}
 	}
-	body := strings.Join(clipped, "\n")
+	body := strings.Join(rows, "\n")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
 
