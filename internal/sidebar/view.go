@@ -114,14 +114,14 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	if m.iconsOn && safeW > 1 {
 		safeW--
 	}
-	if !selected {
-		return truncate(prefix+name, safeW)
+	full := truncate(prefix+name, safeW)
+	if selected {
+		// Full-row tinted background bar. iconGlyph emits a
+		// foreground-only reset so the outer Background extends through
+		// the icon position without a visible gap.
+		return t.SelectedStyle().Width(w).Render(full)
 	}
-	// Selected row: the dim background bar covers the prefix only
-	// (indent + arrow + icon). The filename keeps its native background
-	// so the text stays readable on the user's normal terminal bg.
-	styled := t.SelectedStyle().Render(prefix) + name
-	return ansi.Truncate(styled, safeW, "…")
+	return full
 }
 
 // treeRowParts splits a tree row into the prefix (indent + arrow + icon)
@@ -143,9 +143,7 @@ func treeRowParts(tr treeRow, expanded, withIcon bool) (prefix, name string) {
 	if !withIcon {
 		return indent + expandArrow, tr.node.Name
 	}
-	ic := icons.For(tr.node, expanded)
-	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
-	return indent + expandArrow + glyph + " ", tr.node.Name
+	return indent + expandArrow + iconGlyph(icons.For(tr.node, expanded)) + " ", tr.node.Name
 }
 
 func changeRowParts(cr changeRow, withIcon bool) (prefix, name string) {
@@ -153,9 +151,17 @@ func changeRowParts(cr changeRow, withIcon bool) (prefix, name string) {
 		return statusGlyph(cr.entry.Kind) + "  ", cr.entry.Path
 	}
 	node := filetree.Node{Name: filepath.Base(cr.entry.Path), Kind: filetree.NodeFile}
-	ic := icons.For(node, false)
+	return fmt.Sprintf("%s %s ", statusGlyph(cr.entry.Kind), iconGlyph(icons.For(node, false))), cr.entry.Path
+}
+
+// iconGlyph styles the icon with its colour but emits a foreground-only
+// reset (\x1b[39m) at the end instead of a full SGR reset (\x1b[0m). The
+// full reset would clear an outer background mid-line, leaving the
+// selection bar fragmented at the icon position; the foreground-only
+// reset lets the outer background extend continuously across the prefix.
+func iconGlyph(ic icons.Icon) string {
 	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
-	return fmt.Sprintf("%s %s ", statusGlyph(cr.entry.Kind), glyph), cr.entry.Path
+	return strings.ReplaceAll(glyph, "\x1b[0m", "\x1b[39m")
 }
 
 func statusGlyph(k git.StatusKind) string {
