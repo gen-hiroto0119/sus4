@@ -8,6 +8,7 @@ package mainview
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -186,14 +187,32 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 	if bodyRows < 1 {
 		return header
 	}
+	gutterDigits := len(strconv.Itoa(len(m.fileLines)))
+	if gutterDigits < 1 {
+		gutterDigits = 1
+	}
+	gutterW := gutterDigits + 1 // trailing space
+	contentW := w - gutterW
+	showGutter := contentW >= 1
+	if !showGutter {
+		contentW = w
+	}
+
+	gutterStyle := t.DimStyle()
 	visible := slice(m.fileLines, m.scroll, bodyRows)
 	clipped := make([]string, len(visible))
 	for i, line := range visible {
-		// Hard-truncate to w visible cols. Without this, Lipgloss wraps
-		// long lines inside the bordered pane, the body grows past h, and
-		// Bubble Tea's renderer trims the *top* of the View output to fit
-		// (standard_renderer.go line ~186), erasing the top border.
-		clipped[i] = ansi.Truncate(line, w, "")
+		// Hard-truncate to contentW visible cols. Without this, Lipgloss
+		// wraps long lines inside the bordered pane, the body grows past
+		// h, and Bubble Tea's renderer trims the *top* of the View output
+		// to fit (standard_renderer.go ~L186), erasing the top border.
+		text := ansi.Truncate(line, contentW, "")
+		if showGutter {
+			lineNo := m.scroll + i + 1
+			clipped[i] = gutterStyle.Render(fmt.Sprintf("%*d ", gutterDigits, lineNo)) + text
+		} else {
+			clipped[i] = text
+		}
 	}
 	body := strings.Join(clipped, "\n")
 
