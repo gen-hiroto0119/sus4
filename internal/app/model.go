@@ -20,6 +20,16 @@ const (
 	FocusMain
 )
 
+// DiffSource identifies what flavour of diff is currently shown so the
+// fs-event reloader knows which Cmd to fire to refresh it.
+type DiffSource int
+
+const (
+	DiffSourceNone DiffSource = iota
+	DiffSourceFile
+	DiffSourceWorking
+)
+
 // StartupKind tells Init() what initial Cmd batch to fire.
 type StartupKind int
 
@@ -64,9 +74,16 @@ type Model struct {
 	// watcher's coalesced fs events can decide whether to reload.
 	activeFile string
 
-	// lastStatusReq throttles git status calls — Design.md §14 caps
-	// them at one per 200ms so a fs-event burst can't fork-bomb git.
+	// activeDiffKind / activeDiffPath remember which flavour of diff is
+	// on screen so fs events can re-fire the matching load Cmd.
+	activeDiffKind DiffSource
+	activeDiffPath string // repo-relative; empty for working-tree diff
+
+	// lastStatusReq / lastDiffReq throttle git status and git diff
+	// (Design.md §14: at most one per 200ms) so a fs-event burst can't
+	// fork-bomb the git process pool.
 	lastStatusReq time.Time
+	lastDiffReq   time.Time
 }
 
 func New(opts Options) Model {

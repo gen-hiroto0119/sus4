@@ -38,6 +38,13 @@ type Event struct {
 	Op   fsnotify.Op
 }
 
+// IsStructural reports whether the event represents a directory-level
+// change (create / remove / rename) — i.e. one that may have added or
+// dropped a child node, so the sidebar tree needs to re-list the parent.
+func (e Event) IsStructural() bool {
+	return e.Op.Has(fsnotify.Create) || e.Op.Has(fsnotify.Remove) || e.Op.Has(fsnotify.Rename)
+}
+
 // GitMetaKind narrows the kind of git metadata change.
 type GitMetaKind int
 

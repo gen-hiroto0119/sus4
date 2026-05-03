@@ -98,6 +98,14 @@ func (m *Model) SetSize(w, h int) {
 // SetRepoAvailable toggles whether ModeChanges is functional.
 func (m *Model) SetRepoAvailable(ok bool) { m.repoOK = ok }
 
+// IsExpanded reports whether dir is currently expanded in the tree
+// view. Used by app to decide whether an fs event under dir warrants
+// re-listing its children.
+func (m *Model) IsExpanded(dir string) bool { return m.expanded[dir] }
+
+// RootDir returns the directory the sidebar was created with.
+func (m *Model) RootDir() string { return m.rootDir }
+
 // Mode returns the active sidebar mode.
 func (m *Model) Mode() Mode { return m.mode }
 

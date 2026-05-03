@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -115,10 +116,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			msg.ev.Path == m.activeFile {
 			cmds = append(cmds, loadFileCmd(m.activeFile, m.trueColor))
 		}
+		// Re-list the parent directory when something appeared / went
+		// away there, so the sidebar tree picks up files Claude Code
+		// (or any tool) creates without the user re-expanding.
+		if msg.ev.IsStructural() {
+			parent := filepath.Dir(msg.ev.Path)
+			if parent == m.opts.RootDir {
+				cmds = append(cmds, readDirCmd(parent))
+			} else if m.sidebar.IsExpanded(parent) {
+				cmds = append(cmds, loadChildrenCmd(parent))
+			}
+		}
 		// Any fs change might affect the working tree status, but a
 		// burst can fire dozens of events per second — throttle so we
 		// don't fork `git status` on every one.
 		if c := m.maybeStatusCmd(); c != nil {
+			cmds = append(cmds, c)
+		}
+		// Same trick for an active diff view: re-fetch on fs activity
+		// so the working-tree diff stays in step with the file pane.
+		if c := m.maybeDiffReloadCmd(); c != nil {
 			cmds = append(cmds, c)
 		}
 		return m, tea.Batch(cmds...)
@@ -126,6 +143,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gitMetaMsg:
 		cmds := []tea.Cmd{pumpWatcherCmd(m.watcher)}
 		if c := m.maybeStatusCmd(); c != nil {
+			cmds = append(cmds, c)
+		}
+		if c := m.maybeDiffReloadCmd(); c != nil {
 			cmds = append(cmds, c)
 		}
 		return m, tea.Batch(cmds...)
@@ -150,6 +170,27 @@ func (m *Model) maybeStatusCmd() tea.Cmd {
 	}
 	m.lastStatusReq = now
 	return gitStatusCmd(m.repo)
+}
+
+// maybeDiffReloadCmd re-fires the load Cmd that originally produced the
+// active diff, throttled to statusThrottle. Returns nil when no diff is
+// on screen or the throttle is still warm.
+func (m *Model) maybeDiffReloadCmd() tea.Cmd {
+	if m.repo == nil || m.activeDiffKind == DiffSourceNone {
+		return nil
+	}
+	now := time.Now()
+	if now.Sub(m.lastDiffReq) < statusThrottle {
+		return nil
+	}
+	m.lastDiffReq = now
+	switch m.activeDiffKind {
+	case DiffSourceFile:
+		return loadFileDiffCmd(m.repo, m.activeDiffPath)
+	case DiffSourceWorking:
+		return loadWorkingDiffCmd(m.repo)
+	}
+	return nil
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -231,14 +272,22 @@ func (m Model) handleMainKey(action keymap.Action) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) dispatchOpenIntent(intent sidebar.OpenIntent) tea.Cmd {
+// dispatchOpenIntent records what kind of view the new Cmd will install
+// (so fs events can later refresh it) and returns the Cmd. Pointer
+// receiver because we stamp activeDiff* on the model.
+func (m *Model) dispatchOpenIntent(intent sidebar.OpenIntent) tea.Cmd {
 	switch intent.Kind {
 	case sidebar.OpenFile:
+		m.activeDiffKind = DiffSourceNone
+		m.activeDiffPath = ""
 		return loadFileCmd(intent.Path, m.trueColor)
 	case sidebar.OpenDiffFile:
-		// intent.Path is repo-relative — that's what git wants.
+		m.activeDiffKind = DiffSourceFile
+		m.activeDiffPath = intent.Path
 		return loadFileDiffCmd(m.repo, intent.Path)
 	case sidebar.OpenDiffWorking:
+		m.activeDiffKind = DiffSourceWorking
+		m.activeDiffPath = ""
 		return loadWorkingDiffCmd(m.repo)
 	}
 	return nil
