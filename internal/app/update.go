@@ -9,7 +9,12 @@ import (
 )
 
 func (m Model) Init() tea.Cmd {
+	// tea.ClearScreen forces a CSI 2J right after the alt-screen switch so
+	// the first paint can't overlap residue from the user's prior shell
+	// session — some terminals/tmux configs leak the primary buffer
+	// through. Without it the top rows can read like a half-cut UI.
 	return tea.Batch(
+		tea.ClearScreen,
 		readDirCmd(m.opts.RootDir),
 		openRepoCmd(m.opts.RootDir),
 		startWatcherCmd(m.opts.RootDir),
@@ -25,7 +30,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the end of the new (potentially smaller) viewport, leaving the
 		// pane blank or rendering stale tail content.
 		m.main.ClampScroll()
-		return m, nil
+		// Wipe leftovers from the pre-resize layout — Bubble Tea's
+		// incremental renderer otherwise leaves stale cells where panes
+		// shrank.
+		return m, tea.ClearScreen
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
