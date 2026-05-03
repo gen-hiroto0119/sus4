@@ -264,7 +264,7 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 		return header
 	}
 
-	rendered := renderDiffLines(t, m.diffLines)
+	rendered := renderDiffLines(t, m.diffLines, w)
 	rows := make([]string, 0, bodyRows)
 	for _, line := range slice(rendered, m.scroll, len(rendered)) {
 		if len(rows) >= bodyRows {
@@ -281,13 +281,23 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
 
-func renderDiffLines(t theme.Theme, lines []diffview.Line) []string {
+func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
 	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd).Background(t.DiffAddBg)
 	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel).Background(t.DiffDelBg)
 	hunkStyle := lipgloss.NewStyle().Foreground(t.DiffHunk).Bold(true)
 	fileStyle := lipgloss.NewStyle().Foreground(t.Accent).Background(t.DiffFileBg).Bold(true)
 	metaStyle := t.DimStyle()
 	gutterStyle := t.DimStyle()
+
+	// Horizontal rule prepended to each file header so multi-file diffs
+	// have an unmistakeable visual break between blocks. We use a dim
+	// box-drawing `─` repeated to the pane width — Hardwrap leaves this
+	// alone since it's already exactly w cells.
+	sepWidth := w
+	if sepWidth < 1 {
+		sepWidth = 1
+	}
+	sep := metaStyle.Render(strings.Repeat("─", sepWidth))
 
 	// Width of each side of the line-number gutter — matches the largest
 	// number we'll ever print on either side of this diff.
@@ -335,7 +345,11 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line) []string {
 		case diffview.LineHunk:
 			body = hunkStyle.Render(l.Text)
 		case diffview.LineFileHeader:
-			body = fileStyle.Render(l.Text)
+			// Embed a newline so Hardwrap turns this into two visual
+			// rows: the separator on top and the styled file header
+			// underneath. Scroll math is per-logical-line, so the pair
+			// still counts as one diffview.Line.
+			body = sep + "\n" + fileStyle.Render(l.Text)
 		case diffview.LineMeta, diffview.LineBinary:
 			body = metaStyle.Render(l.Text)
 		default:
