@@ -34,6 +34,14 @@ func (m *Model) Render(t theme.Theme, focused bool, innerWidth, innerHeight int)
 	for i, l := range lines {
 		lines[i] = ansi.Truncate(l, innerWidth, "")
 	}
+	// Pin to exactly innerHeight rows so the sibling pane stays aligned
+	// — lipgloss extends past Height(h) when content is longer.
+	if len(lines) > innerHeight {
+		lines = lines[:innerHeight]
+	}
+	for len(lines) < innerHeight {
+		lines = append(lines, "")
+	}
 	return strings.Join(lines, "\n")
 }
 

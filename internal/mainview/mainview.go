@@ -179,6 +179,17 @@ func (m *Model) Render(t theme.Theme, innerWidth, innerHeight int) string {
 	for i, l := range lines {
 		lines[i] = ansi.Truncate(l, innerWidth, "")
 	}
+	// Pin the result to exactly innerHeight rows. Lipgloss's Height(h)
+	// pads when content is shorter, but extends past h when longer — a
+	// single extra row makes this pane taller than the sibling sidebar
+	// pane, breaking the JoinHorizontal alignment (the sidebar's bottom
+	// border ends up one row above main's).
+	if len(lines) > innerHeight {
+		lines = lines[:innerHeight]
+	}
+	for len(lines) < innerHeight {
+		lines = append(lines, "")
+	}
 	return strings.Join(lines, "\n")
 }
 
