@@ -51,6 +51,10 @@ type treeRow struct {
 
 type changeRow struct {
 	entry git.StatusEntry
+	// aggregate marks the synthetic "all changes" overview row that
+	// sits above the per-file list. Selecting it opens the entire
+	// working-tree diff (OpenDiffWorking) instead of a single file.
+	aggregate bool
 }
 
 type Model struct {
@@ -216,11 +220,17 @@ func (m *Model) Activate() (intent OpenIntent, expandDir string) {
 			return OpenIntent{}, n.Path
 		}
 	case ModeChanges:
-		if m.changesCursor < 0 || m.changesCursor >= len(m.changes) {
+		if m.changesCursor < 0 || m.changesCursor >= len(m.rows) {
 			return OpenIntent{Kind: OpenDiffWorking}, ""
 		}
-		entry := m.changes[m.changesCursor]
-		return OpenIntent{Kind: OpenDiffFile, Path: entry.Path}, ""
+		r := m.rows[m.changesCursor]
+		if r.change == nil {
+			return OpenIntent{}, ""
+		}
+		if r.change.aggregate {
+			return OpenIntent{Kind: OpenDiffWorking}, ""
+		}
+		return OpenIntent{Kind: OpenDiffFile, Path: r.change.entry.Path}, ""
 	}
 	return OpenIntent{}, ""
 }
@@ -241,7 +251,11 @@ func (m *Model) rebuildRows() {
 			m.treeCursor = max(0, len(m.rows)-1)
 		}
 	case ModeChanges:
-		rows := make([]row, 0, len(m.changes))
+		rows := make([]row, 0, len(m.changes)+1)
+		// Overview row first when there's anything to diff.
+		if len(m.changes) > 0 {
+			rows = append(rows, row{change: &changeRow{aggregate: true}})
+		}
 		for i := range m.changes {
 			rows = append(rows, row{change: &changeRow{entry: m.changes[i]}})
 		}

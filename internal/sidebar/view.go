@@ -147,6 +147,14 @@ func treeRowParts(tr treeRow, expanded, withIcon bool) (prefix, name string) {
 }
 
 func changeRowParts(cr changeRow, withIcon bool) (prefix, name string) {
+	if cr.aggregate {
+		// Mirror the per-file leading width so the overview row's name
+		// lines up with file paths underneath.
+		if withIcon {
+			return "*   ", "all changes"
+		}
+		return "*  ", "all changes"
+	}
 	if !withIcon {
 		return statusGlyph(cr.entry.Kind) + "  ", cr.entry.Path
 	}
