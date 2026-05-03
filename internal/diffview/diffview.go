@@ -3,7 +3,11 @@
 // from `git diff` (which is suppressed via --no-color upstream).
 package diffview
 
-import "strings"
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 type LineKind int
 
@@ -17,9 +21,15 @@ const (
 	LineBinary // "Binary files a/x and b/x differ"
 )
 
+// Line carries one row of a unified diff. OldLine and NewLine are
+// 1-based file line numbers — 0 means "not applicable" (e.g. an Add
+// line has no Old number, a hunk header has neither). Renderers use
+// these to draw a two-column gutter without re-parsing the hunk.
 type Line struct {
-	Kind LineKind
-	Text string // raw text, no trailing newline
+	Kind    LineKind
+	Text    string
+	OldLine int
+	NewLine int
 }
 
 // Parse splits diff text into typed lines. The result preserves order.
@@ -30,19 +40,31 @@ func Parse(diff string) []Line {
 	raw := strings.Split(strings.TrimRight(diff, "\n"), "\n")
 	out := make([]Line, 0, len(raw))
 	inHunk := false
+	var oldLine, newLine int
 	for _, l := range raw {
-		out = append(out, classify(l, &inHunk))
+		out = append(out, classify(l, &inHunk, &oldLine, &newLine))
 	}
 	return out
 }
 
-func classify(s string, inHunk *bool) Line {
+// hunkRe captures the start line numbers from "@@ -A[,B] +C[,D] @@".
+var hunkRe = regexp.MustCompile(`^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@`)
+
+func classify(s string, inHunk *bool, oldLine, newLine *int) Line {
 	switch {
 	case strings.HasPrefix(s, "diff --git "):
 		*inHunk = false
 		return Line{Kind: LineFileHeader, Text: s}
 	case strings.HasPrefix(s, "@@"):
 		*inHunk = true
+		if m := hunkRe.FindStringSubmatch(s); m != nil {
+			if v, err := strconv.Atoi(m[1]); err == nil {
+				*oldLine = v
+			}
+			if v, err := strconv.Atoi(m[2]); err == nil {
+				*newLine = v
+			}
+		}
 		return Line{Kind: LineHunk, Text: s}
 	case strings.HasPrefix(s, "Binary files "):
 		return Line{Kind: LineBinary, Text: s}
@@ -51,17 +73,27 @@ func classify(s string, inHunk *bool) Line {
 		return Line{Kind: LineMeta, Text: s}
 	}
 	if len(s) == 0 {
-		return Line{Kind: LineContext, Text: s}
+		l := Line{Kind: LineContext, Text: s, OldLine: *oldLine, NewLine: *newLine}
+		*oldLine++
+		*newLine++
+		return l
 	}
 	switch s[0] {
 	case '+':
-		return Line{Kind: LineAdd, Text: s}
+		l := Line{Kind: LineAdd, Text: s, NewLine: *newLine}
+		*newLine++
+		return l
 	case '-':
-		return Line{Kind: LineDel, Text: s}
+		l := Line{Kind: LineDel, Text: s, OldLine: *oldLine}
+		*oldLine++
+		return l
 	case '\\':
 		// "\ No newline at end of file"
 		return Line{Kind: LineMeta, Text: s}
 	default:
-		return Line{Kind: LineContext, Text: s}
+		l := Line{Kind: LineContext, Text: s, OldLine: *oldLine, NewLine: *newLine}
+		*oldLine++
+		*newLine++
+		return l
 	}
 }

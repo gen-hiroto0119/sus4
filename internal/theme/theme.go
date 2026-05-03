@@ -12,8 +12,11 @@ type Theme struct {
 	Selected       lipgloss.Color
 	SelectedBg     lipgloss.Color
 	DiffAdd        lipgloss.Color
+	DiffAddBg      lipgloss.Color
 	DiffDel        lipgloss.Color
+	DiffDelBg      lipgloss.Color
 	DiffHunk       lipgloss.Color
+	DiffFileBg     lipgloss.Color
 	StatusBar      lipgloss.Color
 	StatusBarBg    lipgloss.Color
 	Error          lipgloss.Color
@@ -40,8 +43,11 @@ func Default() Theme {
 		Selected:      lipgloss.Color("231"),
 		SelectedBg:    lipgloss.Color("237"),
 		DiffAdd:       lipgloss.Color("34"),
+		DiffAddBg:     lipgloss.Color("22"),  // dim green tint
 		DiffDel:       lipgloss.Color("160"),
+		DiffDelBg:     lipgloss.Color("52"),  // dim red tint
 		DiffHunk:      lipgloss.Color("105"),
+		DiffFileBg:    lipgloss.Color("236"), // bar behind file headers
 		StatusBar:     lipgloss.Color("252"),
 		StatusBarBg:   lipgloss.Color("236"),
 		Error:         lipgloss.Color("203"),

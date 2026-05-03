@@ -282,26 +282,66 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 }
 
 func renderDiffLines(t theme.Theme, lines []diffview.Line) []string {
-	out := make([]string, len(lines))
-	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd)
-	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel)
+	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd).Background(t.DiffAddBg)
+	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel).Background(t.DiffDelBg)
 	hunkStyle := lipgloss.NewStyle().Foreground(t.DiffHunk).Bold(true)
+	fileStyle := lipgloss.NewStyle().Foreground(t.Accent).Background(t.DiffFileBg).Bold(true)
 	metaStyle := t.DimStyle()
+	gutterStyle := t.DimStyle()
+
+	// Width of each side of the line-number gutter — matches the largest
+	// number we'll ever print on either side of this diff.
+	maxLN := 0
+	for _, l := range lines {
+		if l.OldLine > maxLN {
+			maxLN = l.OldLine
+		}
+		if l.NewLine > maxLN {
+			maxLN = l.NewLine
+		}
+	}
+	digits := len(strconv.Itoa(maxLN))
+	if digits < 1 {
+		digits = 1
+	}
+	emptyCol := strings.Repeat(" ", digits)
+
+	out := make([]string, len(lines))
 	for i, l := range lines {
+		// Two-column gutter for body rows; blank for headers/meta.
+		var gutter string
+		switch l.Kind {
+		case diffview.LineAdd, diffview.LineDel, diffview.LineContext:
+			old := emptyCol
+			newCol := emptyCol
+			if l.OldLine > 0 {
+				old = fmt.Sprintf("%*d", digits, l.OldLine)
+			}
+			if l.NewLine > 0 {
+				newCol = fmt.Sprintf("%*d", digits, l.NewLine)
+			}
+			gutter = gutterStyle.Render(old + " " + newCol + " ")
+		}
+
+		// Body styled per kind. The +/- rows get a subtle background bar
+		// in addition to the foreground colour so the eye lands on
+		// changed lines first.
+		var body string
 		switch l.Kind {
 		case diffview.LineAdd:
-			out[i] = addStyle.Render(l.Text)
+			body = addStyle.Render(l.Text)
 		case diffview.LineDel:
-			out[i] = delStyle.Render(l.Text)
+			body = delStyle.Render(l.Text)
 		case diffview.LineHunk:
-			out[i] = hunkStyle.Render(l.Text)
+			body = hunkStyle.Render(l.Text)
 		case diffview.LineFileHeader:
-			out[i] = lipgloss.NewStyle().Bold(true).Render(l.Text)
+			body = fileStyle.Render(l.Text)
 		case diffview.LineMeta, diffview.LineBinary:
-			out[i] = metaStyle.Render(l.Text)
+			body = metaStyle.Render(l.Text)
 		default:
-			out[i] = l.Text
+			body = l.Text
 		}
+		out[i] = gutter + body
 	}
 	return out
 }

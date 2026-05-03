@@ -35,6 +35,23 @@ index 0000001..0000002 100644
 			t.Errorf("line %d kind=%v, want %v (text=%q)", i, got[i].Kind, w, got[i].Text)
 		}
 	}
+
+	// Spot-check the line-number plumbing on the body rows.
+	type lnCheck struct {
+		idx          int
+		old, new int
+	}
+	for _, c := range []lnCheck{
+		{5, 1, 1}, // " keep"
+		{6, 2, 0}, // "-old"
+		{7, 0, 2}, // "+new"
+		{8, 0, 3}, // "+added"
+	} {
+		if got[c.idx].OldLine != c.old || got[c.idx].NewLine != c.new {
+			t.Errorf("line %d (kind=%v): old=%d new=%d, want old=%d new=%d",
+				c.idx, got[c.idx].Kind, got[c.idx].OldLine, got[c.idx].NewLine, c.old, c.new)
+		}
+	}
 }
 
 func TestParseHandlesBinaryDiff(t *testing.T) {
