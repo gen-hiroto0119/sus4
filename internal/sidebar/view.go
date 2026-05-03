@@ -98,13 +98,13 @@ func (m *Model) renderBody(t theme.Theme, w, h int) string {
 }
 
 func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
-	var content string
+	var prefix, name string
 	switch {
 	case r.tree != nil:
 		expanded := r.tree.node.Kind == filetree.NodeDir && m.expanded[r.tree.node.Path]
-		content = renderTreeRow(*r.tree, expanded, m.iconsOn)
+		prefix, name = treeRowParts(*r.tree, expanded, m.iconsOn)
 	case r.change != nil:
-		content = renderChangeRow(*r.change, m.iconsOn)
+		prefix, name = changeRowParts(*r.change, m.iconsOn)
 	}
 	// Reserve one extra cell of margin when icons are on. Nerd Font PUA
 	// glyphs are *counted* as 1 cell by ansi/uniseg but several fonts
@@ -114,17 +114,23 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	if m.iconsOn && safeW > 1 {
 		safeW--
 	}
-	content = truncate(content, safeW)
-	if selected {
-		return t.SelectedStyle().Width(w).Render(content)
+	if !selected {
+		return truncate(prefix+name, safeW)
 	}
-	return content
+	// Selected row: the dim background bar covers the prefix only
+	// (indent + arrow + icon). The filename keeps its native background
+	// so the text stays readable on the user's normal terminal bg.
+	styled := t.SelectedStyle().Render(prefix) + name
+	return ansi.Truncate(styled, safeW, "…")
 }
 
-func renderTreeRow(tr treeRow, expanded, withIcon bool) string {
+// treeRowParts splits a tree row into the prefix (indent + arrow + icon)
+// and the filename. Selection styling can be applied to the prefix only,
+// leaving the filename on its native background.
+func treeRowParts(tr treeRow, expanded, withIcon bool) (prefix, name string) {
 	indent := strings.Repeat("  ", tr.depth)
 	if tr.node.Kind == filetree.NodeTruncated {
-		return fmt.Sprintf("%s… (+%d more)", indent, tr.node.HiddenCount)
+		return indent, fmt.Sprintf("… (+%d more)", tr.node.HiddenCount)
 	}
 	expandArrow := "  "
 	if tr.node.Kind == filetree.NodeDir {
@@ -135,21 +141,21 @@ func renderTreeRow(tr treeRow, expanded, withIcon bool) string {
 		}
 	}
 	if !withIcon {
-		return indent + expandArrow + tr.node.Name
+		return indent + expandArrow, tr.node.Name
 	}
 	ic := icons.For(tr.node, expanded)
 	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
-	return indent + expandArrow + glyph + " " + tr.node.Name
+	return indent + expandArrow + glyph + " ", tr.node.Name
 }
 
-func renderChangeRow(cr changeRow, withIcon bool) string {
+func changeRowParts(cr changeRow, withIcon bool) (prefix, name string) {
 	if !withIcon {
-		return fmt.Sprintf("%s  %s", statusGlyph(cr.entry.Kind), cr.entry.Path)
+		return statusGlyph(cr.entry.Kind) + "  ", cr.entry.Path
 	}
 	node := filetree.Node{Name: filepath.Base(cr.entry.Path), Kind: filetree.NodeFile}
 	ic := icons.For(node, false)
 	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
-	return fmt.Sprintf("%s %s %s", statusGlyph(cr.entry.Kind), glyph, cr.entry.Path)
+	return fmt.Sprintf("%s %s ", statusGlyph(cr.entry.Kind), glyph), cr.entry.Path
 }
 
 func statusGlyph(k git.StatusKind) string {
