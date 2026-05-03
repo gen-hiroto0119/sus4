@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 const (
@@ -107,6 +108,12 @@ func (m Model) renderStatus() string {
 		gap = 1
 	}
 	line := " " + left + strings.Repeat(" ", gap) + right + " "
+	// Hard-clamp to m.width: at narrow widths left+right can exceed the
+	// terminal, and StatusStyle.Width(m.width).Render() would wrap into a
+	// second row. The body above is sized assuming statusBarHeight==1, so
+	// any wrap pushes total height past m.height and Bubble Tea trims the
+	// top of View — manifesting as "上部が見切れる".
+	line = ansi.Truncate(line, m.width, "")
 	return m.theme.StatusStyle().Width(m.width).Render(line)
 }
 

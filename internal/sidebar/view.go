@@ -98,7 +98,15 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	case r.change != nil:
 		content = renderChangeRow(*r.change, m.iconsOn)
 	}
-	content = truncate(content, w)
+	// Reserve one extra cell of margin when icons are on. Nerd Font PUA
+	// glyphs are *counted* as 1 cell by ansi/uniseg but several fonts
+	// render them at 2 — a 1-cell mismatch is enough to push the line
+	// past innerW visually and corrupt the layout below.
+	safeW := w
+	if m.iconsOn && safeW > 1 {
+		safeW--
+	}
+	content = truncate(content, safeW)
 	if selected {
 		return t.SelectedStyle().Width(w).Render(content)
 	}
