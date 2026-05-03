@@ -96,7 +96,7 @@ func New(opts Options) Model {
 		theme:     theme.ByName(opts.Config.Theme),
 		focus:     FocusSidebar,
 		sidebar:   sidebar.New(opts.RootDir, opts.Config.Icons),
-		main:      mainview.New(),
+		main:      mainview.New(trueColor),
 		trueColor: trueColor,
 	}
 }

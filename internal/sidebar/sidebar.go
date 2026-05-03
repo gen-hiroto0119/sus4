@@ -174,10 +174,10 @@ func (m *Model) MoveCursor(delta int) bool {
 		}
 		m.treeCursor = next
 	case ModeChanges:
-		if len(m.changes) == 0 {
+		if len(m.rows) == 0 {
 			return false
 		}
-		next := clamp(m.changesCursor+delta, 0, len(m.changes)-1)
+		next := clamp(m.changesCursor+delta, 0, len(m.rows)-1)
 		if next == m.changesCursor {
 			return false
 		}

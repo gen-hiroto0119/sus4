@@ -8,6 +8,7 @@ package mainview
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/gen-hiroto0119/sus4/internal/diffview"
+	"github.com/gen-hiroto0119/sus4/internal/highlight"
 	"github.com/gen-hiroto0119/sus4/internal/theme"
 )
 
@@ -47,6 +49,10 @@ type Model struct {
 	width  int
 	height int
 	err    error
+
+	// trueColor selects chroma's 24-bit formatter for diff body
+	// highlighting. Same value the file view path uses.
+	trueColor bool
 }
 
 type memKey struct {
@@ -54,8 +60,8 @@ type memKey struct {
 	id   string
 }
 
-func New() Model {
-	return Model{kind: KindEmpty, memo: map[memKey]int{}}
+func New(trueColor bool) Model {
+	return Model{kind: KindEmpty, memo: map[memKey]int{}, trueColor: trueColor}
 }
 
 func (m *Model) SetSize(w, h int) {
@@ -264,7 +270,7 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 		return header
 	}
 
-	rendered := renderDiffLines(t, m.diffLines, w)
+	rendered := renderDiffLines(t, m.diffLines, w, m.trueColor)
 	rows := make([]string, 0, bodyRows)
 	for _, line := range slice(rendered, m.scroll, len(rendered)) {
 		if len(rows) >= bodyRows {
@@ -281,7 +287,11 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
 
-func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
+// diffGitRe pulls the b-side path from "diff --git a/<old> b/<new>".
+// We use the new path because it's what exists on disk after the change.
+var diffGitRe = regexp.MustCompile(`^diff --git a/.+ b/(.+)$`)
+
+func renderDiffLines(t theme.Theme, lines []diffview.Line, w int, trueColor bool) []string {
 	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd).Background(t.DiffAddBg)
 	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel).Background(t.DiffDelBg)
 	hunkStyle := lipgloss.NewStyle().Foreground(t.DiffHunk).Bold(true)
@@ -289,18 +299,12 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
 	metaStyle := t.DimStyle()
 	gutterStyle := t.DimStyle()
 
-	// Horizontal rule prepended to each file header so multi-file diffs
-	// have an unmistakeable visual break between blocks. We use a dim
-	// box-drawing `─` repeated to the pane width — Hardwrap leaves this
-	// alone since it's already exactly w cells.
 	sepWidth := w
 	if sepWidth < 1 {
 		sepWidth = 1
 	}
 	sep := metaStyle.Render(strings.Repeat("─", sepWidth))
 
-	// Width of each side of the line-number gutter — matches the largest
-	// number we'll ever print on either side of this diff.
 	maxLN := 0
 	for _, l := range lines {
 		if l.OldLine > maxLN {
@@ -316,9 +320,13 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
 	}
 	emptyCol := strings.Repeat(" ", digits)
 
+	// hl is the per-file syntax highlighter. It rebuilds whenever a
+	// LineFileHeader switches us into a new file's lexer. nil means
+	// "no highlighting" (e.g. before the first file header).
+	var hl func(string) string
+
 	out := make([]string, len(lines))
 	for i, l := range lines {
-		// Two-column gutter for body rows; blank for headers/meta.
 		var gutter string
 		switch l.Kind {
 		case diffview.LineAdd, diffview.LineDel, diffview.LineContext:
@@ -333,22 +341,22 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
 			gutter = gutterStyle.Render(old + " " + newCol + " ")
 		}
 
-		// Body styled per kind. The +/- rows get a subtle background bar
-		// in addition to the foreground colour so the eye lands on
-		// changed lines first.
 		var body string
 		switch l.Kind {
 		case diffview.LineAdd:
-			body = addStyle.Render(l.Text)
+			body = addStyle.Render(highlightDiffBody(l.Text, hl))
 		case diffview.LineDel:
-			body = delStyle.Render(l.Text)
+			body = delStyle.Render(highlightDiffBody(l.Text, hl))
+		case diffview.LineContext:
+			body = highlightDiffBody(l.Text, hl)
 		case diffview.LineHunk:
 			body = hunkStyle.Render(l.Text)
 		case diffview.LineFileHeader:
-			// Embed a newline so Hardwrap turns this into two visual
-			// rows: the separator on top and the styled file header
-			// underneath. Scroll math is per-logical-line, so the pair
-			// still counts as one diffview.Line.
+			if m := diffGitRe.FindStringSubmatch(l.Text); m != nil {
+				hl = highlight.NewLineHighlighter(m[1], trueColor)
+			} else {
+				hl = nil
+			}
 			body = sep + "\n" + fileStyle.Render(l.Text)
 		case diffview.LineMeta, diffview.LineBinary:
 			body = metaStyle.Render(l.Text)
@@ -358,6 +366,22 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int) []string {
 		out[i] = gutter + body
 	}
 	return out
+}
+
+// highlightDiffBody runs the per-file lexer over a diff body row while
+// preserving the leading +/-/space prefix unstyled (so the outer
+// addStyle / delStyle paint it cleanly). The chroma reset \x1b[0m is
+// rewritten to \x1b[39m so any outer Background survives the inner
+// colour resets.
+func highlightDiffBody(text string, hl func(string) string) string {
+	if hl == nil || text == "" {
+		return text
+	}
+	prefix := text[:1]
+	rest := text[1:]
+	highlighted := hl(rest)
+	highlighted = strings.ReplaceAll(highlighted, "\x1b[0m", "\x1b[39m")
+	return prefix + highlighted
 }
 
 func slice[T any](s []T, offset, length int) []T {

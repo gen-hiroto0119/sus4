@@ -119,6 +119,51 @@ func TerminalSupportsTrueColor() bool {
 // long lines so its formatter doesn't choke.
 const markdownWrapWidth = 100
 
+// NewLineHighlighter returns a function that ANSI-highlights a single
+// line of source as if it came from `filename`. It is meant for the
+// diff renderer: each diff body row carries one line of code, and we
+// want the same lexer / theme as the file view but applied per-row.
+//
+// Multi-line constructs (block comments, here-docs) lose context — that
+// is the trade-off of single-line highlighting. Acceptable for now;
+// move to whole-hunk highlighting later if it shows in real use.
+func NewLineHighlighter(filename string, trueColor bool) func(string) string {
+	lexer := lexers.Match(filename)
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+	lexer = chroma.Coalesce(lexer)
+
+	style := styles.Get("monokai")
+	if style == nil {
+		style = styles.Fallback
+	}
+	formatter := formatters.Get("terminal256")
+	if trueColor {
+		if f := formatters.Get("terminal16m"); f != nil {
+			formatter = f
+		}
+	}
+	if formatter == nil {
+		formatter = formatters.Fallback
+	}
+
+	return func(line string) string {
+		if line == "" {
+			return ""
+		}
+		iter, err := lexer.Tokenise(nil, line)
+		if err != nil {
+			return line
+		}
+		var buf bytes.Buffer
+		if err := formatter.Format(&buf, style, iter); err != nil {
+			return line
+		}
+		return buf.String()
+	}
+}
+
 func isMarkdown(filename string) bool {
 	switch strings.ToLower(filepath.Ext(filename)) {
 	case ".md", ".markdown", ".mdown", ".mkd":
