@@ -79,7 +79,7 @@ func TestLoadInvalidTOML(t *testing.T) {
 func TestDefaultPathRespectsXDG(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/custom/xdg")
 	got := DefaultPath()
-	want := filepath.Join("/custom/xdg", "sus4", "config.toml")
+	want := filepath.Join("/custom/xdg", "tetra", "config.toml")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

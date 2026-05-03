@@ -3,13 +3,13 @@ package app
 import (
 	"time"
 
-	"github.com/gen-hiroto0119/sus4/internal/config"
-	"github.com/gen-hiroto0119/sus4/internal/git"
-	"github.com/gen-hiroto0119/sus4/internal/highlight"
-	"github.com/gen-hiroto0119/sus4/internal/mainview"
-	"github.com/gen-hiroto0119/sus4/internal/sidebar"
-	"github.com/gen-hiroto0119/sus4/internal/theme"
-	"github.com/gen-hiroto0119/sus4/internal/watcher"
+	"github.com/gen-hiroto0119/tetra/internal/config"
+	"github.com/gen-hiroto0119/tetra/internal/git"
+	"github.com/gen-hiroto0119/tetra/internal/highlight"
+	"github.com/gen-hiroto0119/tetra/internal/mainview"
+	"github.com/gen-hiroto0119/tetra/internal/sidebar"
+	"github.com/gen-hiroto0119/tetra/internal/theme"
+	"github.com/gen-hiroto0119/tetra/internal/watcher"
 )
 
 // Focus identifies which pane currently receives navigation keys.

@@ -15,9 +15,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/gen-hiroto0119/sus4/internal/diffview"
-	"github.com/gen-hiroto0119/sus4/internal/highlight"
-	"github.com/gen-hiroto0119/sus4/internal/theme"
+	"github.com/gen-hiroto0119/tetra/internal/diffview"
+	"github.com/gen-hiroto0119/tetra/internal/highlight"
+	"github.com/gen-hiroto0119/tetra/internal/theme"
 )
 
 type Kind int

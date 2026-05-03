@@ -13,7 +13,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
 )
 
 type Icon struct {

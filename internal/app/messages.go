@@ -1,10 +1,10 @@
 package app
 
 import (
-	"github.com/gen-hiroto0119/sus4/internal/diffview"
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
-	"github.com/gen-hiroto0119/sus4/internal/git"
-	"github.com/gen-hiroto0119/sus4/internal/watcher"
+	"github.com/gen-hiroto0119/tetra/internal/diffview"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/git"
+	"github.com/gen-hiroto0119/tetra/internal/watcher"
 )
 
 // Messages produced by async Cmds and consumed by Update.

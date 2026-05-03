@@ -10,12 +10,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/gen-hiroto0119/sus4/internal/diffview"
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
-	"github.com/gen-hiroto0119/sus4/internal/git"
-	"github.com/gen-hiroto0119/sus4/internal/highlight"
-	"github.com/gen-hiroto0119/sus4/internal/mainview"
-	"github.com/gen-hiroto0119/sus4/internal/watcher"
+	"github.com/gen-hiroto0119/tetra/internal/diffview"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/git"
+	"github.com/gen-hiroto0119/tetra/internal/highlight"
+	"github.com/gen-hiroto0119/tetra/internal/mainview"
+	"github.com/gen-hiroto0119/tetra/internal/watcher"
 )
 
 // tabExpansion is what every TAB gets rewritten to before content

@@ -44,7 +44,7 @@ func (m Model) View() string {
 // the simplest path that keeps the layout pinned to (m.width, m.height).
 func (m Model) renderHelp() string {
 	rows := []string{
-		"sus4 — keymap",
+		"tetra — keymap",
 		"",
 		"  Tab          Switch focus (sidebar ⇄ main)",
 		"  ←  →         Sidebar mode (files ⇄ changes)",
@@ -124,7 +124,7 @@ func (m Model) renderMainPane() string {
 }
 
 func (m Model) renderStatus() string {
-	left := fmt.Sprintf("sus4  •  %s", focusName(m.focus))
+	left := fmt.Sprintf("tetra  •  %s", focusName(m.focus))
 	if m.err != nil {
 		left = m.theme.ErrorStyle().Render(m.err.Error())
 	}

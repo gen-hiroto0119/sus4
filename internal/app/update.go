@@ -6,9 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/gen-hiroto0119/sus4/internal/keymap"
-	"github.com/gen-hiroto0119/sus4/internal/mainview"
-	"github.com/gen-hiroto0119/sus4/internal/sidebar"
+	"github.com/gen-hiroto0119/tetra/internal/keymap"
+	"github.com/gen-hiroto0119/tetra/internal/mainview"
+	"github.com/gen-hiroto0119/tetra/internal/sidebar"
 )
 
 // statusThrottle caps git status invocations to once per this window.

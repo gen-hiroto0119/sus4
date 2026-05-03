@@ -24,7 +24,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
 )
 
 // debounceWindow is short enough to feel instant (Design.md §7.2: 50 ms)

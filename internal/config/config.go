@@ -1,7 +1,7 @@
-// Package config loads sus4's user-level config from TOML.
+// Package config loads tetra's user-level config from TOML.
 //
-// The file lives at $XDG_CONFIG_HOME/sus4/config.toml (or
-// ~/.config/sus4/config.toml). A missing file is not an error — defaults
+// The file lives at $XDG_CONFIG_HOME/tetra/config.toml (or
+// ~/.config/tetra/config.toml). A missing file is not an error — defaults
 // apply. CLI flags and arguments override config values.
 package config
 
@@ -57,12 +57,12 @@ func Load(path string) (Config, error) {
 // $XDG_CONFIG_HOME when set.
 func DefaultPath() string {
 	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
-		return filepath.Join(x, "sus4", "config.toml")
+		return filepath.Join(x, "tetra", "config.toml")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		// Fall back to a relative path; Load() will treat it as missing.
-		return filepath.Join(".config", "sus4", "config.toml")
+		return filepath.Join(".config", "tetra", "config.toml")
 	}
-	return filepath.Join(home, ".config", "sus4", "config.toml")
+	return filepath.Join(home, ".config", "tetra", "config.toml")
 }

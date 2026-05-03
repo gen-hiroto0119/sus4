@@ -8,10 +8,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
-	"github.com/gen-hiroto0119/sus4/internal/git"
-	"github.com/gen-hiroto0119/sus4/internal/icons"
-	"github.com/gen-hiroto0119/sus4/internal/theme"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/git"
+	"github.com/gen-hiroto0119/tetra/internal/icons"
+	"github.com/gen-hiroto0119/tetra/internal/theme"
 )
 
 // Render produces the sidebar body. The caller wraps it in a bordered pane.

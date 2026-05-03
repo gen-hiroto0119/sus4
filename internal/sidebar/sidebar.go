@@ -9,8 +9,8 @@ package sidebar
 import (
 	"sort"
 
-	"github.com/gen-hiroto0119/sus4/internal/filetree"
-	"github.com/gen-hiroto0119/sus4/internal/git"
+	"github.com/gen-hiroto0119/tetra/internal/filetree"
+	"github.com/gen-hiroto0119/tetra/internal/git"
 )
 
 type Mode int

@@ -46,7 +46,7 @@ func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
 	}
 
 	// Markdown gets a rendered preview rather than a syntax-coloured
-	// view of the raw source — sus4 is a viewer for non-writers, so a
+	// view of the raw source — tetra is a viewer for non-writers, so a
 	// reading-mode display is what actually helps.
 	if isMarkdown(filename) {
 		if out, err := renderMarkdown(content); err == nil {
