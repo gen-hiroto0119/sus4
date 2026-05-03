@@ -1,0 +1,164 @@
+package sidebar
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/gen-hiroto0119/sus4/internal/filetree"
+	"github.com/gen-hiroto0119/sus4/internal/git"
+	"github.com/gen-hiroto0119/sus4/internal/theme"
+)
+
+// Render produces the sidebar body. The caller wraps it in a bordered pane.
+func (m *Model) Render(t theme.Theme, focused bool, innerWidth, innerHeight int) string {
+	if innerWidth <= 0 || innerHeight <= 0 {
+		return ""
+	}
+
+	header := m.renderHeader(t, focused, innerWidth)
+	body := m.renderBody(t, innerWidth, innerHeight-1)
+
+	if m.err != nil {
+		body = t.ErrorStyle().Render(m.err.Error())
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, body)
+}
+
+func (m *Model) renderHeader(t theme.Theme, focused bool, w int) string {
+	label := "files"
+	if m.mode == ModeChanges {
+		label = "changes"
+	}
+	hint := "←/→ switch"
+	style := t.DimStyle()
+	if focused {
+		style = lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
+	}
+	left := style.Render(label)
+	right := t.DimStyle().Render(hint)
+
+	gap := w - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
+	}
+	return left + strings.Repeat(" ", gap) + right
+}
+
+func (m *Model) renderBody(t theme.Theme, w, h int) string {
+	if h <= 0 {
+		return ""
+	}
+	rows := m.rows
+	cursor := m.CursorIndex()
+
+	if m.mode == ModeChanges && !m.repoOK {
+		return t.DimStyle().Render("Not a git repository")
+	}
+	if len(rows) == 0 {
+		if m.mode == ModeTree && m.rootChildren == nil {
+			return t.DimStyle().Render("loading…")
+		}
+		if m.mode == ModeChanges {
+			return t.DimStyle().Render("(working tree clean)")
+		}
+		return t.DimStyle().Render("(empty)")
+	}
+
+	first, last := visibleWindow(cursor, len(rows), h)
+	var b strings.Builder
+	for i := first; i < last; i++ {
+		line := m.renderRow(t, rows[i], i == cursor, w)
+		b.WriteString(line)
+		if i < last-1 {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
+func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
+	var content string
+	switch {
+	case r.tree != nil:
+		content = renderTreeRow(*r.tree)
+	case r.change != nil:
+		content = renderChangeRow(*r.change)
+	}
+	content = truncate(content, w)
+	if selected {
+		return t.SelectedStyle().Width(w).Render(content)
+	}
+	return content
+}
+
+func renderTreeRow(tr treeRow) string {
+	indent := strings.Repeat("  ", tr.depth)
+	prefix := "  "
+	switch tr.node.Kind {
+	case filetree.NodeDir:
+		prefix = "▸ "
+	case filetree.NodeFile:
+		prefix = "  "
+	case filetree.NodeTruncated:
+		return fmt.Sprintf("%s… (+%d more)", indent, tr.node.HiddenCount)
+	}
+	return indent + prefix + tr.node.Name
+}
+
+func renderChangeRow(cr changeRow) string {
+	return fmt.Sprintf("%s  %s", statusGlyph(cr.entry.Kind), cr.entry.Path)
+}
+
+func statusGlyph(k git.StatusKind) string {
+	switch k {
+	case git.StatusModified:
+		return "M"
+	case git.StatusAdded:
+		return "A"
+	case git.StatusDeleted:
+		return "D"
+	case git.StatusRenamed:
+		return "R"
+	case git.StatusUntracked:
+		return "?"
+	case git.StatusUnmerged:
+		return "U"
+	}
+	return " "
+}
+
+// visibleWindow returns [first, last) such that the cursor stays in
+// view. We keep it dead simple: a sliding window pinned to the cursor.
+func visibleWindow(cursor, total, height int) (int, int) {
+	if total <= height {
+		return 0, total
+	}
+	first := cursor - height/2
+	if first < 0 {
+		first = 0
+	}
+	last := first + height
+	if last > total {
+		last = total
+		first = last - height
+	}
+	return first, last
+}
+
+func truncate(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= w {
+		return s
+	}
+	// Naive byte-level truncation; fine for ASCII paths. Lipgloss.Width
+	// will do a final pass when rendering selection styling.
+	if w >= 1 && len(s) > w {
+		return s[:w-1] + "…"
+	}
+	return s
+}
