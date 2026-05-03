@@ -10,12 +10,14 @@ package highlight
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/charmbracelet/glamour"
 )
 
 // MaxBytes is the cutoff above which we render the file as plain text
@@ -41,6 +43,17 @@ func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
 	}
 	if len(content) > MaxBytes {
 		return Result{Text: string(content), Plain: true, Reason: "large file (>1 MiB), highlighting skipped"}
+	}
+
+	// Markdown gets a rendered preview rather than a syntax-coloured
+	// view of the raw source — sus4 is a viewer for non-writers, so a
+	// reading-mode display is what actually helps.
+	if isMarkdown(filename) {
+		if out, err := renderMarkdown(content); err == nil {
+			return Result{Text: out}
+		}
+		// Fall through to chroma if glamour fails for any reason —
+		// the raw source highlighted is still better than an error.
 	}
 
 	lexer := pickLexer(filename, content)
@@ -98,4 +111,29 @@ func isBinary(content []byte) bool {
 func TerminalSupportsTrueColor() bool {
 	v := strings.ToLower(os.Getenv("COLORTERM"))
 	return v == "truecolor" || v == "24bit"
+}
+
+// markdownWrapWidth is the column glamour wraps paragraphs at. Picking
+// a relatively wide value lets the mainview's own ansi.Hardwrap handle
+// the actual viewport width — glamour just needs to break ridiculously
+// long lines so its formatter doesn't choke.
+const markdownWrapWidth = 100
+
+func isMarkdown(filename string) bool {
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".md", ".markdown", ".mdown", ".mkd":
+		return true
+	}
+	return false
+}
+
+func renderMarkdown(content []byte) (string, error) {
+	r, err := glamour.NewTermRenderer(
+		glamour.WithStandardStyle("dark"),
+		glamour.WithWordWrap(markdownWrapWidth),
+	)
+	if err != nil {
+		return "", err
+	}
+	return r.Render(string(content))
 }
