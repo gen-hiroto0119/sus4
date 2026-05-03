@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/gen-hiroto0119/sus4/internal/config"
 	"github.com/gen-hiroto0119/sus4/internal/git"
 	"github.com/gen-hiroto0119/sus4/internal/highlight"
@@ -61,6 +63,10 @@ type Model struct {
 	// activeFile tracks the currently open file path (absolute) so the
 	// watcher's coalesced fs events can decide whether to reload.
 	activeFile string
+
+	// lastStatusReq throttles git status calls — Design.md §14 caps
+	// them at one per 200ms so a fs-event burst can't fork-bomb git.
+	lastStatusReq time.Time
 }
 
 func New(opts Options) Model {

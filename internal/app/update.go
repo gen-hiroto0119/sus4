@@ -1,12 +1,20 @@
 package app
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/gen-hiroto0119/sus4/internal/keymap"
 	"github.com/gen-hiroto0119/sus4/internal/mainview"
 	"github.com/gen-hiroto0119/sus4/internal/sidebar"
 )
+
+// statusThrottle caps git status invocations to once per this window.
+// A burst of fs events on a busy repo otherwise spawns one `git status`
+// subprocess per debounced event — that drives the CPU through the roof
+// (Design.md §14).
+const statusThrottle = 200 * time.Millisecond
 
 func (m Model) Init() tea.Cmd {
 	// tea.ClearScreen forces a CSI 2J right after the alt-screen switch so
@@ -107,22 +115,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			msg.ev.Path == m.activeFile {
 			cmds = append(cmds, loadFileCmd(m.activeFile, m.trueColor))
 		}
-		// Any fs change might affect the working tree status. Refreshing
-		// is cheap and the watcher already coalesced bursts.
-		if m.repo != nil {
-			cmds = append(cmds, gitStatusCmd(m.repo))
+		// Any fs change might affect the working tree status, but a
+		// burst can fire dozens of events per second — throttle so we
+		// don't fork `git status` on every one.
+		if c := m.maybeStatusCmd(); c != nil {
+			cmds = append(cmds, c)
 		}
 		return m, tea.Batch(cmds...)
 
 	case gitMetaMsg:
 		cmds := []tea.Cmd{pumpWatcherCmd(m.watcher)}
-		if m.repo != nil {
-			cmds = append(cmds, gitStatusCmd(m.repo))
+		if c := m.maybeStatusCmd(); c != nil {
+			cmds = append(cmds, c)
 		}
 		return m, tea.Batch(cmds...)
 	}
 
 	return m, nil
+}
+
+// maybeStatusCmd returns a gitStatusCmd if the last request is older
+// than statusThrottle, nil otherwise. The Update method that owns m is
+// a value receiver, so it returns a (potentially mutated) m alongside;
+// here we stamp lastStatusReq via the same return path by mutating the
+// receiver in the caller via assignment. Practically this is invoked on
+// `m` in Update where the resulting m is returned to Bubble Tea.
+func (m *Model) maybeStatusCmd() tea.Cmd {
+	if m.repo == nil {
+		return nil
+	}
+	now := time.Now()
+	if now.Sub(m.lastStatusReq) < statusThrottle {
+		return nil
+	}
+	m.lastStatusReq = now
+	return gitStatusCmd(m.repo)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
