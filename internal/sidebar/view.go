@@ -2,6 +2,7 @@ package sidebar
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gen-hiroto0119/sus4/internal/filetree"
 	"github.com/gen-hiroto0119/sus4/internal/git"
+	"github.com/gen-hiroto0119/sus4/internal/icons"
 	"github.com/gen-hiroto0119/sus4/internal/theme"
 )
 
@@ -91,7 +93,8 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	var content string
 	switch {
 	case r.tree != nil:
-		content = renderTreeRow(*r.tree)
+		expanded := r.tree.node.Kind == filetree.NodeDir && m.expanded[r.tree.node.Path]
+		content = renderTreeRow(*r.tree, expanded)
 	case r.change != nil:
 		content = renderChangeRow(*r.change)
 	}
@@ -102,22 +105,29 @@ func (m *Model) renderRow(t theme.Theme, r row, selected bool, w int) string {
 	return content
 }
 
-func renderTreeRow(tr treeRow) string {
+func renderTreeRow(tr treeRow, expanded bool) string {
 	indent := strings.Repeat("  ", tr.depth)
-	prefix := "  "
-	switch tr.node.Kind {
-	case filetree.NodeDir:
-		prefix = "▸ "
-	case filetree.NodeFile:
-		prefix = "  "
-	case filetree.NodeTruncated:
+	if tr.node.Kind == filetree.NodeTruncated {
 		return fmt.Sprintf("%s… (+%d more)", indent, tr.node.HiddenCount)
 	}
-	return indent + prefix + tr.node.Name
+	expandArrow := "  "
+	if tr.node.Kind == filetree.NodeDir {
+		if expanded {
+			expandArrow = "▾ "
+		} else {
+			expandArrow = "▸ "
+		}
+	}
+	ic := icons.For(tr.node, expanded)
+	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
+	return indent + expandArrow + glyph + " " + tr.node.Name
 }
 
 func renderChangeRow(cr changeRow) string {
-	return fmt.Sprintf("%s  %s", statusGlyph(cr.entry.Kind), cr.entry.Path)
+	node := filetree.Node{Name: filepath.Base(cr.entry.Path), Kind: filetree.NodeFile}
+	ic := icons.For(node, false)
+	glyph := lipgloss.NewStyle().Foreground(ic.Color).Render(ic.Glyph)
+	return fmt.Sprintf("%s %s %s", statusGlyph(cr.entry.Kind), glyph, cr.entry.Path)
 }
 
 func statusGlyph(k git.StatusKind) string {
