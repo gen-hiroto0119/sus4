@@ -265,8 +265,9 @@ focus = sidebarFocus | mainFocus
 
 - 再描画は viewport 内の行のみ。Lipgloss のスタイル文字列は事前生成してキャッシュ。
 - ハイライトとファイル読み込みは別 Cmd に分け、ハイライト前にプレーンテキストで先に描画する（体感速度の確保）。
-- fsnotify のバーストはデバウンスで吸収。
-- `git status` は連続呼び出しを 200ms 間隔で間引く。
+- fsnotify のバーストはデバウンスで吸収（`watcher` の 50ms ウィンドウ）。
+- `git status` / `git diff` は連続呼び出しを 200ms 間隔で間引く（`Model.maybeStatusCmd` / `maybeDiffReloadCmd`）。
+- TAB は読み込み時に 4 スペースに展開し、`ansi.StringWidth` の 1-cell 計上と端末描画幅のズレを排除する。
 
 ## 15. Error Handling & Edge Cases
 
@@ -282,7 +283,7 @@ focus = sidebarFocus | mainFocus
 | Unit | diff パース / git status パース / ツリー構築 / 除外ルール | 標準 testing |
 | Snapshot | View の出力 | [`teatest`](https://github.com/charmbracelet/x/tree/main/exp/teatest) |
 | Integration | 一時 git リポジトリでの起動〜操作シナリオ | testing + tempdir |
-| Manual | 実マシンで `keifu` と組み合わせた使用感 | — |
+| Manual | 実マシンでの使用感 | — |
 
 CI（GitHub Actions）で `go vet` / `staticcheck` / `go test ./...` を回す。
 

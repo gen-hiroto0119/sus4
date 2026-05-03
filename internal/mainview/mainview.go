@@ -291,12 +291,6 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 // We use the new path because it's what exists on disk after the change.
 var diffGitRe = regexp.MustCompile(`^diff --git a/.+ b/(.+)$`)
 
-// hunkContextRe matches the unified-diff hunk header and captures the
-// optional function-context tail git appends after the closing @@. We
-// drop the numeric range — the line-number gutter on every body row
-// already shows where you are — and surface only the readable bit.
-var hunkContextRe = regexp.MustCompile(`^@@ [^@]+ @@\s*(.*)$`)
-
 func renderDiffLines(t theme.Theme, lines []diffview.Line, w int, trueColor bool) []string {
 	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd).Background(t.DiffAddBg)
 	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel).Background(t.DiffDelBg)
@@ -356,19 +350,7 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int, trueColor bool
 		case diffview.LineContext:
 			body = highlightDiffBody(l.Text, hl)
 		case diffview.LineHunk:
-			ctx := ""
-			if m := hunkContextRe.FindStringSubmatch(l.Text); m != nil {
-				ctx = strings.TrimSpace(m[1])
-			}
-			marker := hunkStyle.Render("▸")
-			if ctx == "" {
-				body = marker
-			} else if hl != nil {
-				styled := strings.ReplaceAll(hl(ctx), "\x1b[0m", "\x1b[39m")
-				body = marker + " " + styled
-			} else {
-				body = marker + " " + hunkStyle.Render(ctx)
-			}
+			body = hunkStyle.Render(l.Text)
 		case diffview.LineFileHeader:
 			if m := diffGitRe.FindStringSubmatch(l.Text); m != nil {
 				hl = highlight.NewLineHighlighter(m[1], trueColor)

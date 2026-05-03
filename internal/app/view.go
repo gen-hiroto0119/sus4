@@ -52,7 +52,7 @@ func (m Model) renderHelp() string {
 		"  PgUp PgDn    Scroll page",
 		"  Home End     Jump to top / bottom",
 		"  Enter        Open file / expand directory",
-		"  ?            Toggle this help",
+		"  Shift+?      Toggle this help",
 		"  q  Ctrl-C    Quit",
 	}
 	box := lipgloss.NewStyle().
@@ -128,7 +128,7 @@ func (m Model) renderStatus() string {
 	if m.err != nil {
 		left = m.theme.ErrorStyle().Render(m.err.Error())
 	}
-	right := "?: help   tab: focus   q: quit"
+	right := "Shift+?: help   tab: focus   q: quit"
 	// Reserve 1 col of breathing room on each edge so the bar doesn't read
 	// as flush against the terminal border.
 	inner := m.width - 2
