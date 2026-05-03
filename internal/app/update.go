@@ -188,4 +188,3 @@ func (m Model) dispatchOpenIntent(intent sidebar.OpenIntent) tea.Cmd {
 	}
 	return nil
 }
-

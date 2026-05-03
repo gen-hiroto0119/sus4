@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/gen-hiroto0119/sus4/internal/filetree"
 	"github.com/gen-hiroto0119/sus4/internal/git"
@@ -24,7 +25,14 @@ func (m *Model) Render(t theme.Theme, focused bool, innerWidth, innerHeight int)
 		body = t.ErrorStyle().Render(m.err.Error())
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, body)
+	// Defensive clamp: every line must be ≤ innerWidth so the bordered
+	// pane outside doesn't wrap and overflow its requested height.
+	out := lipgloss.JoinVertical(lipgloss.Left, header, body)
+	lines := strings.Split(out, "\n")
+	for i, l := range lines {
+		lines[i] = ansi.Truncate(l, innerWidth, "")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m *Model) renderHeader(t theme.Theme, focused bool, w int) string {
@@ -152,13 +160,10 @@ func truncate(s string, w int) string {
 	if w <= 0 {
 		return ""
 	}
-	if lipgloss.Width(s) <= w {
-		return s
-	}
-	// Naive byte-level truncation; fine for ASCII paths. Lipgloss.Width
-	// will do a final pass when rendering selection styling.
-	if w >= 1 && len(s) > w {
-		return s[:w-1] + "…"
-	}
-	return s
+	// ANSI-aware visual-width truncation. We cannot use byte length: a
+	// row wider than w (e.g. multi-byte filenames or long deeply-nested
+	// paths) would cause Lipgloss to wrap inside the bordered pane and
+	// blow past the requested height — Bubble Tea then trims the top of
+	// the View, hiding the top border.
+	return ansi.Truncate(s, w, "…")
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/gen-hiroto0119/sus4/internal/diffview"
 	"github.com/gen-hiroto0119/sus4/internal/theme"
@@ -153,19 +154,24 @@ func (m *Model) Render(t theme.Theme, innerWidth, innerHeight int) string {
 	if innerWidth <= 0 || innerHeight <= 0 {
 		return ""
 	}
-	if m.err != nil {
-		return t.ErrorStyle().Render(m.err.Error())
+	var out string
+	switch {
+	case m.err != nil:
+		out = t.ErrorStyle().Render(m.err.Error())
+	case m.kind == KindEmpty:
+		out = t.DimStyle().Render("Select a file or change.")
+	case m.kind == KindFile:
+		out = m.renderFile(t, innerWidth, innerHeight)
+	case m.kind == KindDiff, m.kind == KindCommit:
+		out = m.renderDiff(t, innerWidth, innerHeight)
 	}
-
-	switch m.kind {
-	case KindEmpty:
-		return t.DimStyle().Render("Select a file or change.")
-	case KindFile:
-		return m.renderFile(t, innerWidth, innerHeight)
-	case KindDiff, KindCommit:
-		return m.renderDiff(t, innerWidth, innerHeight)
+	// Defensive clamp: every emitted line must be ≤ innerWidth, otherwise
+	// the bordered pane wraps it and Bubble Tea trims the top of View().
+	lines := strings.Split(out, "\n")
+	for i, l := range lines {
+		lines[i] = ansi.Truncate(l, innerWidth, "")
 	}
-	return ""
+	return strings.Join(lines, "\n")
 }
 
 func (m *Model) renderFile(t theme.Theme, w, h int) string {
@@ -181,7 +187,15 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 		return header
 	}
 	visible := slice(m.fileLines, m.scroll, bodyRows)
-	body := strings.Join(visible, "\n")
+	clipped := make([]string, len(visible))
+	for i, line := range visible {
+		// Hard-truncate to w visible cols. Without this, Lipgloss wraps
+		// long lines inside the bordered pane, the body grows past h, and
+		// Bubble Tea's renderer trims the *top* of the View output to fit
+		// (standard_renderer.go line ~186), erasing the top border.
+		clipped[i] = ansi.Truncate(line, w, "")
+	}
+	body := strings.Join(clipped, "\n")
 
 	if m.fileBanner != "" {
 		banner := t.DimStyle().Render("· " + m.fileBanner)
@@ -202,7 +216,11 @@ func (m *Model) renderDiff(t theme.Theme, w, h int) string {
 
 	rendered := renderDiffLines(t, m.diffLines)
 	visible := slice(rendered, m.scroll, bodyRows)
-	body := strings.Join(visible, "\n")
+	clipped := make([]string, len(visible))
+	for i, line := range visible {
+		clipped[i] = ansi.Truncate(line, w, "")
+	}
+	body := strings.Join(clipped, "\n")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
 
