@@ -76,9 +76,10 @@ func (t Theme) ErrorStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(t.Error).Bold(true)
 }
 
+// SelectedStyle marks the active tree row with a darker background only.
+// Foreground and weight are deliberately left alone so each row's own
+// styling (icon color, dim filenames, etc.) bleeds through — the bar of
+// background colour is enough of a cursor cue without recolouring text.
 func (t Theme) SelectedStyle() lipgloss.Style {
-	return lipgloss.NewStyle().
-		Foreground(t.Selected).
-		Background(t.SelectedBg).
-		Bold(true)
+	return lipgloss.NewStyle().Background(t.SelectedBg)
 }
