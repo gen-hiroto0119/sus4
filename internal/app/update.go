@@ -128,6 +128,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	action := keymap.Resolve(msg)
 
+	// While help is showing, only quit and close-help keys do anything.
+	// Everything else is swallowed so the user can't accidentally drive
+	// the (now invisible) panes underneath.
+	if m.helpOpen {
+		switch action {
+		case keymap.ActionQuit:
+			return m, tea.Quit
+		case keymap.ActionHelp:
+			m.helpOpen = false
+		}
+		if msg.String() == "esc" {
+			m.helpOpen = false
+		}
+		return m, nil
+	}
+
 	// Global keys win regardless of focus.
 	switch action {
 	case keymap.ActionQuit:

@@ -22,6 +22,10 @@ func (m Model) View() string {
 		return "resize…"
 	}
 
+	if m.helpOpen {
+		return m.renderHelp()
+	}
+
 	var body string
 	if m.width < mainOnlyWidth {
 		body = m.renderMainPane()
@@ -31,6 +35,34 @@ func (m Model) View() string {
 			m.renderMainPane(),
 		)
 	}
+	return lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatus())
+}
+
+// renderHelp paints a centered modal-style cheat sheet that takes over
+// the whole screen while m.helpOpen is true. It is intentionally not an
+// overlay: lipgloss has no real layering, so a full-screen takeover is
+// the simplest path that keeps the layout pinned to (m.width, m.height).
+func (m Model) renderHelp() string {
+	rows := []string{
+		"sus4 — keymap",
+		"",
+		"  Tab          Switch focus (sidebar ⇄ main)",
+		"  ←  →         Sidebar mode (files ⇄ changes)",
+		"  ↑  ↓ / k j   Move / scroll line",
+		"  PgUp PgDn    Scroll page",
+		"  Home End     Jump to top / bottom",
+		"  Enter        Open file / expand directory",
+		"  ?            Toggle this help",
+		"  q  Ctrl-C    Quit",
+	}
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(m.theme.BorderFocused).
+		Padding(1, 2).
+		Foreground(m.theme.Foreground).
+		Render(strings.Join(rows, "\n"))
+	body := lipgloss.Place(m.width, m.height-statusBarHeight,
+		lipgloss.Center, lipgloss.Center, box)
 	return lipgloss.JoinVertical(lipgloss.Left, body, m.renderStatus())
 }
 
