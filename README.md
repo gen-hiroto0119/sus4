@@ -97,15 +97,16 @@ go vet ./...
 - [fsnotify](https://github.com/fsnotify/fsnotify)
 - [BurntSushi/toml](https://github.com/BurntSushi/toml)
 
-## Companion: keifu
+## Mental model: alongside keifu
 
-[`keifu`](https://github.com/trasta298/keifu) (系譜) はコミットグラフ TUI。
-`sus4` (suspended 4th) と組み合わせて使う想定:
+[`keifu`](https://github.com/trasta298/keifu) (系譜) は同じ「書かない人のための観察ツール」哲学を
+コミットグラフに当てた TUI で、`sus4` の思想上の親戚にあたる。**機能的に連携するわけではない**
+— ツール間の API 連動は無い。同じテーブルに並べて使うと収まりが良い、という関係:
 
-| ツール | 役割 |
+| ツール | 観察対象 |
 | --- | --- |
-| `keifu` | コミットグラフのナビゲーション |
-| `sus4` | ファイル / コード / diff の閲覧 |
+| `keifu` | コミットグラフ（どのブランチ、どこから分岐） |
+| `sus4` | ファイル / コード / diff の中身（このファイル / この変更は何） |
 
 ## License
 
