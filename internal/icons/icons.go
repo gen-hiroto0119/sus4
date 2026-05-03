@@ -1,9 +1,10 @@
-// Package icons maps filetree nodes to a Nerd Font glyph + color, in the
-// spirit of nvim-web-devicons.
+// Package icons maps filetree nodes to a Material Design Nerd Font glyph
+// + color, in the spirit of nvim-web-devicons.
 //
-// The glyphs live in the Nerd Font Private Use Area (U+E000–F8FF), so
-// rendering requires a Nerd Font in the host terminal. With a regular
-// font the cells fall back to "tofu" (□).
+// The glyphs all live in the Material Design Icons range of Nerd Font
+// (U+F0000–F1FFF, the nf-md-* namespace), so a single visual family is
+// used across the tree. Rendering requires a Nerd Font v3+ in the host
+// terminal — without one the cells fall back to "tofu" (□).
 package icons
 
 import (
@@ -27,11 +28,11 @@ func For(n filetree.Node, expanded bool) Icon {
 	switch n.Kind {
 	case filetree.NodeDir:
 		if expanded {
-			return Icon{Glyph: "", Color: folderColor} //
+			return Icon{Glyph: "\U000f0770", Color: folderColor} // mdi:folder-open
 		}
-		return Icon{Glyph: "", Color: folderColor} //
+		return Icon{Glyph: "\U000f024b", Color: folderColor} // mdi:folder
 	case filetree.NodeTruncated:
-		return Icon{Glyph: "", Color: defaultColor} //
+		return Icon{Glyph: "\U000f01d9", Color: defaultColor} // mdi:dots-horizontal
 	}
 
 	if ic, ok := byName[n.Name]; ok {
@@ -44,7 +45,7 @@ func For(n filetree.Node, expanded bool) Icon {
 	if ic, ok := byExt[ext]; ok {
 		return ic
 	}
-	return Icon{Glyph: "", Color: defaultColor} //
+	return Icon{Glyph: "\U000f0214", Color: defaultColor} // mdi:file
 }
 
 var (
@@ -53,78 +54,78 @@ var (
 )
 
 // byExt is keyed by lowercase extension (without leading dot).
-// Glyph values follow the nvim-web-devicons defaults where practical.
+// All glyphs are Material Design Icons (nf-md-*).
 var byExt = map[string]Icon{
-	"go":       {"", "#00ADD8"},
-	"mod":      {"", "#00ADD8"},
-	"sum":      {"", "#00ADD8"},
-	"ts":       {"", "#3178c6"},
-	"tsx":      {"", "#3178c6"},
-	"js":       {"", "#f1e05a"},
-	"jsx":      {"", "#f1e05a"},
-	"mjs":      {"", "#f1e05a"},
-	"cjs":      {"", "#f1e05a"},
-	"json":     {"", "#cbcb41"},
-	"toml":     {"", "#9c4221"},
-	"yaml":     {"", "#cb171e"},
-	"yml":      {"", "#cb171e"},
-	"md":       {"", "#519aba"},
-	"markdown": {"", "#519aba"},
-	"txt":      {"", "#6d8086"},
-	"html":     {"", "#e34c26"},
-	"css":      {"", "#563d7c"},
-	"scss":     {"", "#c6538c"},
-	"sh":       {"", "#4d5a5e"},
-	"zsh":      {"", "#4d5a5e"},
-	"bash":     {"", "#4d5a5e"},
-	"fish":     {"", "#4d5a5e"},
-	"py":       {"", "#3572A5"},
-	"rs":       {"", "#dea584"},
-	"rb":       {"", "#701516"},
-	"c":        {"", "#599eff"},
-	"h":        {"", "#a074c4"},
-	"cpp":      {"", "#519aba"},
-	"cc":       {"", "#519aba"},
-	"hpp":      {"", "#a074c4"},
-	"java":     {"", "#cc3e44"},
-	"kt":       {"", "#F88A02"},
-	"swift":    {"", "#e37933"},
-	"dart":     {"", "#03589C"},
-	"lua":      {"", "#51a0cf"},
-	"vim":      {"", "#019833"},
-	"lock":     {"", "#bbbbbb"},
-	"svg":      {"ﰟ", "#ffb13b"},
-	"png":      {"", "#a074c4"},
-	"jpg":      {"", "#a074c4"},
-	"jpeg":     {"", "#a074c4"},
-	"gif":      {"", "#a074c4"},
-	"webp":     {"", "#a074c4"},
-	"pdf":      {"", "#b30b00"},
-	"zip":      {"", "#eca517"},
-	"tar":      {"", "#eca517"},
-	"gz":       {"", "#eca517"},
-	"tgz":      {"", "#eca517"},
+	"go":       {"\U000f07d3", "#00ADD8"}, // mdi:language-go
+	"mod":      {"\U000f07d3", "#00ADD8"},
+	"sum":      {"\U000f07d3", "#00ADD8"},
+	"ts":       {"\U000f06e6", "#3178c6"}, // mdi:language-typescript
+	"tsx":      {"\U000f07ba", "#3178c6"}, // mdi:react
+	"js":       {"\U000f031e", "#f1e05a"}, // mdi:language-javascript
+	"jsx":      {"\U000f07ba", "#f1e05a"}, // mdi:react
+	"mjs":      {"\U000f031e", "#f1e05a"},
+	"cjs":      {"\U000f031e", "#f1e05a"},
+	"json":     {"\U000f0626", "#cbcb41"}, // mdi:code-json
+	"toml":     {"\U000f0219", "#9c4221"}, // mdi:file-document
+	"yaml":     {"\U000f0219", "#cb171e"},
+	"yml":      {"\U000f0219", "#cb171e"},
+	"md":       {"\U000f0354", "#519aba"}, // mdi:language-markdown
+	"markdown": {"\U000f0354", "#519aba"},
+	"txt":      {"\U000f0219", "#6d8086"}, // mdi:file-document
+	"html":     {"\U000f031d", "#e34c26"}, // mdi:language-html5
+	"css":      {"\U000f031c", "#563d7c"}, // mdi:language-css3
+	"scss":     {"\U000f031c", "#c6538c"},
+	"sh":       {"\U000f1183", "#4d5a5e"}, // mdi:bash (or shell)
+	"zsh":      {"\U000f1183", "#4d5a5e"},
+	"bash":     {"\U000f1183", "#4d5a5e"},
+	"fish":     {"\U000f1183", "#4d5a5e"},
+	"py":       {"\U000f0320", "#3572A5"}, // mdi:language-python
+	"rs":       {"\U000f1617", "#dea584"}, // mdi:language-rust
+	"rb":       {"\U000f0d2d", "#701516"}, // mdi:language-ruby
+	"c":        {"\U000f0671", "#599eff"}, // mdi:language-c
+	"h":        {"\U000f0671", "#a074c4"},
+	"cpp":      {"\U000f0672", "#519aba"}, // mdi:language-cpp
+	"cc":       {"\U000f0672", "#519aba"},
+	"hpp":      {"\U000f0672", "#a074c4"},
+	"java":     {"\U000f0b37", "#cc3e44"}, // mdi:language-java
+	"kt":       {"\U000f0bd1", "#F88A02"}, // mdi:language-kotlin
+	"swift":    {"\U000f06e5", "#e37933"}, // mdi:language-swift
+	"dart":     {"\U000f01a4", "#03589C"}, // mdi:code-tags
+	"lua":      {"\U000f08b1", "#51a0cf"}, // mdi:language-lua
+	"vim":      {"\U000f01a4", "#019833"}, // mdi:code-tags
+	"lock":     {"\U000f033e", "#bbbbbb"}, // mdi:lock
+	"svg":      {"\U000f0721", "#ffb13b"}, // mdi:svg
+	"png":      {"\U000f021f", "#a074c4"}, // mdi:file-image
+	"jpg":      {"\U000f021f", "#a074c4"},
+	"jpeg":     {"\U000f021f", "#a074c4"},
+	"gif":      {"\U000f021f", "#a074c4"},
+	"webp":     {"\U000f021f", "#a074c4"},
+	"pdf":      {"\U000f0226", "#b30b00"}, // mdi:file-pdf-box
+	"zip":      {"\U000f06eb", "#eca517"}, // mdi:zip-box
+	"tar":      {"\U000f06eb", "#eca517"},
+	"gz":       {"\U000f06eb", "#eca517"},
+	"tgz":      {"\U000f06eb", "#eca517"},
 }
 
 var byName = map[string]Icon{
-	"Dockerfile":        {"", "#458ee6"},
-	"dockerfile":        {"", "#458ee6"},
-	".dockerignore":     {"", "#458ee6"},
-	"Makefile":          {"", "#6d8086"},
-	"makefile":          {"", "#6d8086"},
-	"LICENSE":           {"", "#d0bf41"},
-	"LICENSE.md":        {"", "#d0bf41"},
-	"LICENSE.txt":       {"", "#d0bf41"},
-	".gitignore":        {"", "#f54d27"},
-	".gitattributes":    {"", "#f54d27"},
-	".gitmodules":       {"", "#f54d27"},
-	".env":              {"", "#faf743"},
-	".env.local":        {"", "#faf743"},
-	"go.mod":            {"", "#00ADD8"},
-	"go.sum":            {"", "#00ADD8"},
-	"package.json":      {"", "#cbcb41"},
-	"package-lock.json": {"", "#cbcb41"},
-	"tsconfig.json":     {"", "#3178c6"},
-	"README.md":         {"", "#519aba"},
-	"readme.md":         {"", "#519aba"},
+	"Dockerfile":        {"\U000f0868", "#458ee6"}, // mdi:docker
+	"dockerfile":        {"\U000f0868", "#458ee6"},
+	".dockerignore":     {"\U000f0868", "#458ee6"},
+	"Makefile":          {"\U000f0493", "#6d8086"}, // mdi:cog
+	"makefile":          {"\U000f0493", "#6d8086"},
+	"LICENSE":           {"\U000f05e6", "#d0bf41"}, // mdi:copyright
+	"LICENSE.md":        {"\U000f05e6", "#d0bf41"},
+	"LICENSE.txt":       {"\U000f05e6", "#d0bf41"},
+	".gitignore":        {"\U000f02a2", "#f54d27"}, // mdi:git
+	".gitattributes":    {"\U000f02a2", "#f54d27"},
+	".gitmodules":       {"\U000f02a2", "#f54d27"},
+	".env":              {"\U000f0306", "#faf743"}, // mdi:key
+	".env.local":        {"\U000f0306", "#faf743"},
+	"go.mod":            {"\U000f07d3", "#00ADD8"},
+	"go.sum":            {"\U000f07d3", "#00ADD8"},
+	"package.json":      {"\U000f0399", "#cbcb41"}, // mdi:nodejs
+	"package-lock.json": {"\U000f0399", "#cbcb41"},
+	"tsconfig.json":     {"\U000f06e6", "#3178c6"},
+	"README.md":         {"\U000f00bd", "#519aba"}, // mdi:book-open-variant
+	"readme.md":         {"\U000f00bd", "#519aba"},
 }
