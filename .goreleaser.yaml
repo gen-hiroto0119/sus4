@@ -9,12 +9,7 @@ before:
 builds:
   - id: tetra
     main: ./cmd/tetra
-    # Binary is `tetra-tui` rather than `tetra` so the release archives
-    # and the homebrew bottle don't fight homebrew-core's existing
-    # `tetra` (cilium/tetragon) over /opt/homebrew/bin/tetra. The Go
-    # `go install` path still produces a binary called `tetra` because
-    # that comes from the cmd dir name, not goreleaser's config.
-    binary: tetra-tui
+    binary: tetra
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -77,23 +72,9 @@ release:
 
     Install via `go install github.com/gen-hiroto0119/tetra/cmd/tetra@{{ .Tag }}` or download a binary below.
 
-brews:
-  # Formula name is tetra-tui (not tetra) because homebrew-core already
-  # ships an unrelated `tetra` package — `brew install tetra` resolves
-  # to that one. The binary inside this formula is still named `tetra`,
-  # so users get the same `tetra` command on PATH after install.
-  - name: tetra-tui
-    repository:
-      owner: gen-hiroto0119
-      name: homebrew-tap
-      token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
-    homepage: 'https://github.com/gen-hiroto0119/tetra'
-    description: 'A silent code viewer for the AI coding era.'
-    license: MIT
-    install: |
-      bin.install "tetra-tui"
-    test: |
-      # tetra-tui is a TUI with no -h / --help flag (would launch the
-      # alt-screen and hang in CI). --version short-circuits before any
-      # tea.Program setup so it's safe to run inside brew test.
-      assert_match "tetra", shell_output("#{bin}/tetra-tui --version")
+# Homebrew tap distribution is intentionally not configured. The
+# project name `tetra` collides with homebrew-core's tetra (cilium/
+# tetragon) over /opt/homebrew/bin/tetra, and the various workarounds
+# (rename binary to tetra-tui, alias, fully-qualified install command)
+# all degrade UX or split identity. Distribution is therefore
+# go-install-only — see the README Install section.
