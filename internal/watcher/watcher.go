@@ -167,10 +167,18 @@ func (w *Watcher) handle(ev fsnotify.Event) {
 		return
 	}
 
-	// Newly created directory? Walk it so subsequent edits inside fire too.
+	// Newly created directory? Walk it so subsequent edits inside fire
+	// too — but only when the new dir is *not* on the exclude list.
+	// Without this check, a build tool that creates `.next` / `dist` /
+	// etc. mid-session would have its entire output tree silently added
+	// to the watch set, bypassing the recursive-add filter that only
+	// fires for descendants. That single oversight contributed to the
+	// 200%+ CPU regression seen on Next.js-style projects.
 	if ev.Has(fsnotify.Create) {
 		if info, err := os.Stat(ev.Name); err == nil && info.IsDir() {
-			_ = w.addRecursive(ev.Name)
+			if !filetree.IsExcluded(filepath.Base(ev.Name)) {
+				_ = w.addRecursive(ev.Name)
+			}
 		}
 	}
 

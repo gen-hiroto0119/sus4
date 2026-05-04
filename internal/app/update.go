@@ -148,13 +148,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Re-list the parent directory when something appeared / went
 		// away there, so the sidebar tree picks up files Claude Code
-		// (or any tool) creates without the user re-expanding.
+		// (or any tool) creates without the user re-expanding. Throttled
+		// (statusThrottle) because a build watcher creating temp files
+		// at 50 Hz would otherwise re-walk the same dir 50 times per
+		// second — each readDir is cheap but 50× cheap is not cheap.
 		if msg.ev.IsStructural() {
 			parent := filepath.Dir(msg.ev.Path)
-			if parent == m.opts.RootDir {
-				cmds = append(cmds, readDirCmd(parent))
-			} else if m.sidebar.IsExpanded(parent) {
-				cmds = append(cmds, loadChildrenCmd(parent))
+			if c := m.maybeTreeRefreshCmd(parent); c != nil {
+				cmds = append(cmds, c)
 			}
 		}
 		// Any fs change might affect the working tree status, but a
@@ -206,6 +207,28 @@ func (m *Model) maybeStatusCmd() tea.Cmd {
 	}
 	m.lastStatusReq = now
 	return gitStatusCmd(m.repo)
+}
+
+// maybeTreeRefreshCmd returns a Cmd that re-lists parent so the
+// sidebar can pick up new / removed children. Throttled so that a
+// burst of fs structural events (test framework spraying tmp files,
+// build tool emitting many output chunks) doesn't trigger that many
+// directory walks per second. Routes to readDirCmd for the root or
+// loadChildrenCmd for an expanded subdir; nil for collapsed subdirs.
+func (m *Model) maybeTreeRefreshCmd(parent string) tea.Cmd {
+	now := time.Now()
+	if now.Sub(m.lastTreeRefreshReq) < statusThrottle {
+		return nil
+	}
+	switch {
+	case parent == m.opts.RootDir:
+		m.lastTreeRefreshReq = now
+		return readDirCmd(parent)
+	case m.sidebar.IsExpanded(parent):
+		m.lastTreeRefreshReq = now
+		return loadChildrenCmd(parent)
+	}
+	return nil
 }
 
 // maybeFileReloadCmd batches the active-file body reload and the
