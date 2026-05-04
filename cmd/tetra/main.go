@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime/debug"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,6 +13,12 @@ import (
 	"github.com/gen-hiroto0119/tetra/internal/app"
 	"github.com/gen-hiroto0119/tetra/internal/config"
 )
+
+// modulePath is the canonical go-install target used by `tetra update`.
+// Pinned here rather than re-derived from runtime/debug so a user-built
+// fork still self-updates against the upstream release stream by default;
+// fork users can rebuild with their own ldflags or skip update entirely.
+const modulePath = "github.com/gen-hiroto0119/tetra/cmd/tetra"
 
 // version is set at link-time by goreleaser via `-X main.version=...`.
 // "dev" is what unreleased local builds report (e.g. `go build`); the
@@ -49,6 +57,16 @@ func main() {
 		}
 	}
 
+	// `tetra update` shells out to `go install ...@latest` so the user
+	// can refresh the binary in place without remembering the module
+	// path. It runs before parseArgs because positional args are
+	// reserved for v0.2's <file> / <commit> dispatch and we don't want
+	// "update" to be misread as a filename. Subcommand only — no flag
+	// equivalent — keeping the surface intentionally tiny.
+	if len(os.Args) >= 2 && os.Args[1] == "update" {
+		os.Exit(runUpdate(os.Args[2:]))
+	}
+
 	opts, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "tetra:", err)
@@ -60,6 +78,39 @@ func main() {
 		fmt.Fprintln(os.Stderr, "tetra:", err)
 		os.Exit(1)
 	}
+}
+
+// runUpdate execs `go install <modulePath>@latest`, streaming output
+// directly to the user's terminal. Returns the exit code main should
+// propagate. Args after "update" are reserved for future flags (e.g.
+// `--version vX.Y.Z`); for v0.1 any extra arg fails fast with usage.
+func runUpdate(args []string) int {
+	target := modulePath + "@latest"
+	if len(args) > 0 {
+		fmt.Fprintf(os.Stderr, "tetra: `update` takes no arguments (got %v)\n", args)
+		fmt.Fprintf(os.Stderr, "       run `go install %s` directly to pin a version\n", modulePath+"@vX.Y.Z")
+		return 2
+	}
+	fmt.Printf("tetra: running `go install %s`...\n", target)
+	cmd := exec.Command("go", "install", target)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		// errors.Is(*exec.Error) trips when `go` itself isn't on PATH.
+		// That's the most common failure mode for users who installed
+		// via raw binary download, so the message points them at the
+		// next-best fallback.
+		var execErr *exec.Error
+		if errors.As(err, &execErr) && errors.Is(execErr.Err, exec.ErrNotFound) {
+			fmt.Fprintln(os.Stderr, "tetra: `go` is not in PATH — install Go (https://go.dev/dl/) or")
+			fmt.Fprintln(os.Stderr, "       grab a binary from https://github.com/gen-hiroto0119/tetra/releases")
+			return 1
+		}
+		fmt.Fprintln(os.Stderr, "tetra: update failed:", err)
+		return 1
+	}
+	fmt.Println("tetra: done. run `tetra --version` to verify.")
+	return 0
 }
 
 func parseArgs(args []string) (app.Options, error) {

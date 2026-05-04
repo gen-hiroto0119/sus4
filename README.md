@@ -59,6 +59,18 @@ PATH ディレクトリに置く (`/usr/local/bin/tetra` など)。
 Homebrew は提供していません — homebrew-core の `tetra` (Cilium の
 Tetragon CLI) と名前が衝突するため。
 
+### Update
+
+```bash
+tetra update     # = go install github.com/gen-hiroto0119/tetra/cmd/tetra@latest
+```
+
+`go` が PATH に無い場合は失敗するので、その時はバイナリを
+[Releases](https://github.com/gen-hiroto0119/tetra/releases) から
+落として置き換えるか、Go をインストールしてから再実行。
+特定 version に固定したいときは `go install ...@v0.1.7` のように
+直接実行してください。
+
 Nerd Font v3+ をターミナルで使っているとアイコンが正しく表示される。
 おすすめは [Moralerspace HW NF](https://github.com/yuru7/moralerspace) や
 JetBrainsMono Nerd Font。Nerd Font が無い環境では config で `icons = false` を
