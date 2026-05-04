@@ -133,16 +133,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fsEventMsg:
 		// Re-arm the pump first so we never miss the next event.
 		cmds := []tea.Cmd{pumpWatcherCmd(m.watcher)}
-		// Only reload the file when the user is actually looking at it —
-		// otherwise a background fs event would yank a diff view back to
-		// the file view.
+		// Only reload the file when the user is actually looking at it
+		// (otherwise a background fs event would yank a diff view back
+		// to the file view) AND the throttle window has elapsed since
+		// the last reload — a build watcher rewriting the open file at
+		// 10–20 Hz would otherwise spawn that many highlight + git diff
+		// goroutines per second.
 		if m.main.Kind() == mainview.KindFile &&
 			m.activeFile != "" &&
 			msg.ev.Path == m.activeFile {
-			cmds = append(cmds,
-				loadFileCmd(m.activeFile, m.trueColor, m.theme.IsDark),
-				loadFileMarkersCmd(m.repo, m.activeFile),
-			)
+			if c := m.maybeFileReloadCmd(); c != nil {
+				cmds = append(cmds, c)
+			}
 		}
 		// Re-list the parent directory when something appeared / went
 		// away there, so the sidebar tree picks up files Claude Code
@@ -204,6 +206,25 @@ func (m *Model) maybeStatusCmd() tea.Cmd {
 	}
 	m.lastStatusReq = now
 	return gitStatusCmd(m.repo)
+}
+
+// maybeFileReloadCmd batches the active-file body reload and the
+// markers reload behind the same statusThrottle window used for git
+// status. Returns nil when there's nothing to reload (no active file)
+// or the throttle is still warm.
+func (m *Model) maybeFileReloadCmd() tea.Cmd {
+	if m.activeFile == "" {
+		return nil
+	}
+	now := time.Now()
+	if now.Sub(m.lastFileReloadReq) < statusThrottle {
+		return nil
+	}
+	m.lastFileReloadReq = now
+	return tea.Batch(
+		loadFileCmd(m.activeFile, m.trueColor, m.theme.IsDark),
+		loadFileMarkersCmd(m.repo, m.activeFile),
+	)
 }
 
 // maybeDiffReloadCmd re-fires the load Cmd that originally produced the

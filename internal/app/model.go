@@ -79,11 +79,15 @@ type Model struct {
 	activeDiffKind DiffSource
 	activeDiffPath string // repo-relative; empty for working-tree diff
 
-	// lastStatusReq / lastDiffReq throttle git status and git diff
+	// lastStatusReq / lastDiffReq / lastFileReloadReq throttle git
+	// status, git diff, and the active-file body+markers reload chain
 	// (Design.md §14: at most one per 200ms) so a fs-event burst can't
-	// fork-bomb the git process pool.
-	lastStatusReq time.Time
-	lastDiffReq   time.Time
+	// fork-bomb the git process pool. Without the file-reload throttle,
+	// a build watcher rewriting the open file at 10–20 Hz had been
+	// driving tetra to 200%+ CPU.
+	lastStatusReq     time.Time
+	lastDiffReq       time.Time
+	lastFileReloadReq time.Time
 }
 
 func New(opts Options) Model {

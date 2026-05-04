@@ -14,10 +14,45 @@ import (
 )
 
 // Excluded directories for v0.1. .gitignore parsing is deferred to v0.3.
+//
+// The list deliberately covers high-churn build / cache / IDE output
+// trees. The watcher applies the same set, and a busy build tool (e.g.
+// `next dev`, `cargo watch`) inside one of these dirs was observed
+// driving tetra to 200%+ CPU through fs-event amplification.
+//
+// Conservative rule of thumb: include only directories that virtually
+// never contain source the user wants to read. When uncertain, leave
+// the dir alone — false-excluding a hand-written tree is worse than
+// some background CPU.
 var defaultExcludes = map[string]struct{}{
-	".git":         {},
+	// VCS metadata
+	".git": {},
+	".hg":  {},
+	".svn": {},
+	// Dependency bundles
 	"node_modules": {},
 	"vendor":       {},
+	// Build / framework caches
+	".next":         {},
+	".nuxt":         {},
+	".svelte-kit":   {},
+	".turbo":        {},
+	".parcel-cache": {},
+	".cache":        {},
+	"dist":          {},
+	"build":         {},
+	"out":           {},
+	"target":        {}, // Rust
+	"coverage":      {},
+	// Python
+	"__pycache__":   {},
+	".pytest_cache": {},
+	".venv":         {},
+	"venv":          {},
+	".tox":          {},
+	// Editor / IDE
+	".idea":   {},
+	".vscode": {},
 }
 
 // MaxEntriesPerDir caps how many entries we surface from a single directory.
