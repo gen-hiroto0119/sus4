@@ -489,3 +489,10 @@ func TitleFor(prefix, path string) string {
 	}
 	return fmt.Sprintf("%s · %s", prefix, path)
 }
+
+// FilePath / FileMarkers / FileLines expose the active file's
+// bookkeeping for the app-level integration tests. Production code
+// does not need them.
+func (m *Model) FilePath() string                         { return m.filePath }
+func (m *Model) FileMarkers() map[int]diffview.ChangeKind { return m.fileMarkers }
+func (m *Model) FileLines() []string                      { return m.fileLines }

@@ -159,7 +159,16 @@ func loadFileMarkersCmd(repo *git.Repo, absPath string) tea.Cmd {
 		return func() tea.Msg { return fileMarkersLoadedMsg{path: absPath, cleared: true} }
 	}
 	return func() tea.Msg {
-		rel, err := filepath.Rel(repo.Root(), absPath)
+		// EvalSymlinks both sides so a path like /var/... (symlink to
+		// /private/var/...) doesn't compute as ../../../private/var/...
+		// — that "../"-prefixed result was tripping the outside-the-tree
+		// guard for files under macOS temp dirs and any path traversed
+		// via a symlinked ancestor.
+		root, err := filepath.EvalSymlinks(repo.Root())
+		if err != nil { root = repo.Root() }
+		real, err := filepath.EvalSymlinks(absPath)
+		if err != nil { real = absPath }
+		rel, err := filepath.Rel(root, real)
 		if err != nil || strings.HasPrefix(rel, "..") {
 			return fileMarkersLoadedMsg{path: absPath, cleared: true}
 		}
