@@ -72,7 +72,13 @@ type Model struct {
 
 	// activeFile tracks the currently open file path (absolute) so the
 	// watcher's coalesced fs events can decide whether to reload.
-	activeFile string
+	// activeFileMtime / activeFileSize fingerprint the last on-disk
+	// state we rendered, so a fs-event burst whose file isn't actually
+	// changing (atime touch, attribute flip, spurious kqueue noise)
+	// can skip the chroma highlight + git diff work entirely.
+	activeFile      string
+	activeFileMtime time.Time
+	activeFileSize  int64
 
 	// activeDiffKind / activeDiffPath remember which flavour of diff is
 	// on screen so fs events can re-fire the matching load Cmd.
