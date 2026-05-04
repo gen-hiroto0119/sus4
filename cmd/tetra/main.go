@@ -11,7 +11,21 @@ import (
 	"github.com/gen-hiroto0119/tetra/internal/config"
 )
 
+// version is set at link-time by goreleaser via `-X main.version=...`.
+// "dev" is what unreleased local builds report.
+var version = "dev"
+
 func main() {
+	// --version short-circuits before any TUI setup so it's safe for
+	// brew test (system "#{bin}/tetra", "--version") and for users
+	// scripting an install verification check.
+	for _, a := range os.Args[1:] {
+		if a == "--version" || a == "-v" {
+			fmt.Printf("tetra %s\n", version)
+			return
+		}
+	}
+
 	opts, err := parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "tetra:", err)
