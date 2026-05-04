@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -12,8 +13,30 @@ import (
 )
 
 // version is set at link-time by goreleaser via `-X main.version=...`.
-// "dev" is what unreleased local builds report.
+// "dev" is what unreleased local builds report (e.g. `go build`); the
+// `go install module@vX.Y.Z` path is handled separately below by
+// reading the embedded module version from runtime/debug.
 var version = "dev"
+
+// resolveVersion picks the best available version string.
+//   - If goreleaser injected one at link time, use it (e.g. v0.1.5).
+//   - Otherwise, ask runtime/debug for the module version baked in by
+//     `go install ...@vX.Y.Z` — that path doesn't run goreleaser's
+//     ldflags, so users would otherwise see "dev" for a tagged install.
+//   - "(devel)" means there was no module version (a `go build` from
+//     a local checkout); keep that as "dev" so it's obvious.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		v := info.Main.Version
+		if v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return "dev"
+}
 
 func main() {
 	// --version short-circuits before any TUI setup so it's safe for
@@ -21,7 +44,7 @@ func main() {
 	// scripting an install verification check.
 	for _, a := range os.Args[1:] {
 		if a == "--version" || a == "-v" {
-			fmt.Printf("tetra %s\n", version)
+			fmt.Printf("tetra %s\n", resolveVersion())
 			return
 		}
 	}
