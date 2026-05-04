@@ -1,7 +1,6 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 	"time"
 
@@ -12,11 +11,18 @@ import (
 	"github.com/gen-hiroto0119/tetra/internal/sidebar"
 )
 
-// statusThrottle caps git status invocations to once per this window.
-// A burst of fs events on a busy repo otherwise spawns one `git status`
-// subprocess per debounced event — that drives the CPU through the roof
-// (Design.md §14).
+// statusThrottle caps git status / git diff / structural tree refresh
+// to once per this window so a fs-event burst can't fork-bomb the git
+// process pool (Design.md §14).
 const statusThrottle = 200 * time.Millisecond
+
+// fileReloadThrottle is the wider window for the chroma-highlight +
+// git-diff chain on the active file. Highlight is the dominant per-
+// reload cost (50–200 ms for a typical source file), so even at 5 Hz
+// (statusThrottle's rate) it would burn one core. 500 ms = 2 reloads
+// per second, which still feels live for AI-assisted editing while
+// keeping steady-state CPU bounded.
+const fileReloadThrottle = 500 * time.Millisecond
 
 func (m Model) Init() tea.Cmd {
 	// tea.ClearScreen forces a CSI 2J right after the alt-screen switch so
@@ -95,14 +101,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.main.ShowFile(msg.path, msg.text, msg.banner)
 		m.activeFile = msg.path
-		// Stamp the file fingerprint so the next fs event can compare
-		// and skip a no-op reload. Stat failure is non-fatal — the
-		// reload guard simply falls through and a redundant reload
-		// runs at most once per statusThrottle window.
-		if info, err := os.Stat(msg.path); err == nil {
-			m.activeFileMtime = info.ModTime()
-			m.activeFileSize = info.Size()
-		}
 		return m, nil
 
 	case fileMarkersLoadedMsg:
@@ -241,28 +239,24 @@ func (m *Model) maybeTreeRefreshCmd(parent string) tea.Cmd {
 }
 
 // maybeFileReloadCmd batches the active-file body reload and the
-// markers reload behind the same statusThrottle window used for git
-// status. Returns nil when there's nothing to reload (no active file)
-// or the throttle is still warm.
+// markers reload behind fileReloadThrottle. Returns nil when there's
+// nothing to reload (no active file) or the throttle is still warm.
 //
-// Also short-circuits when the on-disk mtime+size haven't changed
-// since the last load: that means we're seeing fs-event noise (atime
-// touches, attribute flips, kqueue duplicates) on a file whose bytes
-// haven't actually moved. Re-running chroma + git diff in that case
-// burns CPU for no visible change. Profiling on a busy Next.js
-// project showed this single guard cuts open-file CPU from 230% to
-// near zero.
+// Earlier versions called os.Stat on the active file here to detect
+// "fs event without real change" cases. CPU profiling under fs-event
+// burst showed that stat itself was 51% of CPU — the syscall round
+// trip plus the GC pressure from fast-arriving event metadata. The
+// stat is gone; the throttle alone is sufficient because fs events
+// that don't actually correspond to a file change are still bounded
+// by the watcher's 50 ms debounce upstream and our fileReloadThrottle
+// window downstream. The worst-case waste is one redundant chroma +
+// git-diff per 500 ms, which the cpu_probe bench confirms is fine.
 func (m *Model) maybeFileReloadCmd() tea.Cmd {
 	if m.activeFile == "" {
 		return nil
 	}
-	if info, err := os.Stat(m.activeFile); err == nil {
-		if info.ModTime().Equal(m.activeFileMtime) && info.Size() == m.activeFileSize {
-			return nil
-		}
-	}
 	now := time.Now()
-	if now.Sub(m.lastFileReloadReq) < statusThrottle {
+	if now.Sub(m.lastFileReloadReq) < fileReloadThrottle {
 		return nil
 	}
 	m.lastFileReloadReq = now

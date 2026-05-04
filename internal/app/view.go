@@ -17,11 +17,73 @@ const (
 	mainOnlyWidth = 60
 )
 
+// viewCache memoises the last-produced View() string so a fs-event
+// burst (which forces an Update + View pass per event) doesn't re-run
+// lipgloss border + ansi.StringWidth + chroma-output hardwrap on every
+// frame. The cache is keyed on every input that View consumes — see
+// viewCacheKey below — and lives behind a pointer so the value-receiver
+// View() can mutate it.
+//
+// CPU profiling on the synthetic burst bench (see cpu_probe_test.go)
+// pinpointed lipgloss.applyBorder and ansi.StringWidth as 35–40% of
+// CPU once the os.Stat regression had been removed; this cache turns
+// the steady-state cost from "redraw the whole pane each event" into
+// "compare a few ints".
+type viewCache struct {
+	out string
+	key viewCacheKey
+}
+
+type viewCacheKey struct {
+	width      int
+	height     int
+	focus      Focus
+	helpOpen   bool
+	sidebarRev int
+	mainRev    int
+	errMsg     string
+}
+
+func (m Model) viewKey() viewCacheKey {
+	errMsg := ""
+	if m.err != nil {
+		errMsg = m.err.Error()
+	}
+	return viewCacheKey{
+		width:      m.width,
+		height:     m.height,
+		focus:      m.focus,
+		helpOpen:   m.helpOpen,
+		sidebarRev: m.sidebar.Revision(),
+		mainRev:    m.main.Revision(),
+		errMsg:     errMsg,
+	}
+}
+
 func (m Model) View() string {
 	if m.width < 10 || m.height < 3 {
 		return "resize…"
 	}
 
+	if m.cache != nil && m.cache.out != "" {
+		key := m.viewKey()
+		if m.cache.key == key {
+			return m.cache.out
+		}
+	}
+
+	out := m.renderView()
+
+	if m.cache != nil {
+		m.cache.out = out
+		m.cache.key = m.viewKey()
+	}
+	return out
+}
+
+// renderView is the previous View body. Split out so the cache layer
+// in View can dispatch to it on a miss.
+func (m Model) renderView() string {
 	if m.helpOpen {
 		return m.renderHelp()
 	}

@@ -30,6 +30,12 @@ const (
 )
 
 type Model struct {
+	// revision is bumped on every state change that affects the
+	// rendered output, so the app-level view cache (app.viewCache) can
+	// short-circuit rendering when nothing has actually changed. Pure
+	// reads (Kind, FilePath, etc.) leave it alone.
+	revision int
+
 	kind Kind
 
 	// File content: highlighted lines (ANSI-coded).
@@ -71,11 +77,18 @@ func New(trueColor bool) Model {
 }
 
 func (m *Model) SetSize(w, h int) {
+	if m.width != w || m.height != h {
+		m.revision++
+	}
 	m.width = w
 	m.height = h
 }
 
 func (m *Model) Kind() Kind { return m.kind }
+
+// Revision returns the current state-version counter. Increments on
+// every mutating method (ShowFile, SetMarkers, Scroll*, SetSize, etc.).
+func (m *Model) Revision() int { return m.revision }
 
 func (m *Model) ShowEmpty() {
 	m.saveScroll()
@@ -83,6 +96,7 @@ func (m *Model) ShowEmpty() {
 	m.scroll = 0
 	m.filePath = ""
 	m.fileMarkers = nil
+	m.revision++
 }
 
 // ShowFile installs already-highlighted output as the file view.
@@ -104,6 +118,7 @@ func (m *Model) ShowFile(path, content, banner string) {
 	m.fileLines = strings.Split(strings.TrimRight(content, "\n"), "\n")
 	m.scroll = m.recallScroll(memKey{KindFile, path})
 	m.err = nil
+	m.revision++
 }
 
 // SetMarkers attaches the per-line change classification map. Caller
@@ -117,13 +132,18 @@ func (m *Model) ShowFile(path, content, banner string) {
 // markers may be empty to indicate "tracked but no pending changes".
 func (m *Model) SetMarkers(path string, markers map[int]diffview.ChangeKind) {
 	m.fileMarkers = markers
+	m.revision++
 }
 
 // ClearMarkers drops the gutter marker column entirely (non-git path,
 // untracked file, or git-diff failure). Same caveat as SetMarkers re
 // staleness: app layer pre-validates path.
 func (m *Model) ClearMarkers(path string) {
+	if m.fileMarkers == nil {
+		return
+	}
 	m.fileMarkers = nil
+	m.revision++
 }
 
 // ShowDiff installs a parsed unified diff. title is shown in a header
@@ -135,12 +155,20 @@ func (m *Model) ShowDiff(title string, lines []diffview.Line) {
 	m.diffLines = lines
 	m.scroll = m.recallScroll(memKey{KindDiff, title})
 	m.err = nil
+	m.revision++
 }
 
-func (m *Model) SetError(err error) { m.err = err }
+func (m *Model) SetError(err error) {
+	m.err = err
+	m.revision++
+}
 
 func (m *Model) Scroll(delta int) {
+	prev := m.scroll
 	m.scroll = clamp(m.scroll+delta, 0, m.maxScroll())
+	if prev != m.scroll {
+		m.revision++
+	}
 }
 
 func (m *Model) ScrollPage(delta int) {
@@ -153,14 +181,29 @@ func (m *Model) ScrollPage(delta int) {
 	m.Scroll(delta * page)
 }
 
-func (m *Model) ScrollHome() { m.scroll = 0 }
-func (m *Model) ScrollEnd()  { m.scroll = m.maxScroll() }
+func (m *Model) ScrollHome() {
+	if m.scroll != 0 {
+		m.scroll = 0
+		m.revision++
+	}
+}
+func (m *Model) ScrollEnd() {
+	end := m.maxScroll()
+	if m.scroll != end {
+		m.scroll = end
+		m.revision++
+	}
+}
 
 // ClampScroll re-pins scroll into [0, maxScroll] using the current m.height.
 // Call after a window resize so the previous scroll offset doesn't point
 // past the end of the (now smaller) visible window.
 func (m *Model) ClampScroll() {
+	prev := m.scroll
 	m.scroll = clamp(m.scroll, 0, m.maxScroll())
+	if prev != m.scroll {
+		m.revision++
+	}
 }
 
 func (m *Model) maxScroll() int {

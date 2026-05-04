@@ -72,13 +72,7 @@ type Model struct {
 
 	// activeFile tracks the currently open file path (absolute) so the
 	// watcher's coalesced fs events can decide whether to reload.
-	// activeFileMtime / activeFileSize fingerprint the last on-disk
-	// state we rendered, so a fs-event burst whose file isn't actually
-	// changing (atime touch, attribute flip, spurious kqueue noise)
-	// can skip the chroma highlight + git diff work entirely.
-	activeFile      string
-	activeFileMtime time.Time
-	activeFileSize  int64
+	activeFile string
 
 	// activeDiffKind / activeDiffPath remember which flavour of diff is
 	// on screen so fs events can re-fire the matching load Cmd.
@@ -97,6 +91,11 @@ type Model struct {
 	lastDiffReq        time.Time
 	lastFileReloadReq  time.Time
 	lastTreeRefreshReq time.Time
+
+	// cache is the View() result memo, behind a pointer so the value-
+	// receiver View can update it. See app/view.go viewCache for the
+	// rationale and key contents.
+	cache *viewCache
 }
 
 func New(opts Options) Model {
@@ -111,5 +110,6 @@ func New(opts Options) Model {
 		sidebar:   sidebar.New(opts.RootDir, opts.Config.Icons),
 		main:      mainview.New(trueColor),
 		trueColor: trueColor,
+		cache:     &viewCache{},
 	}
 }

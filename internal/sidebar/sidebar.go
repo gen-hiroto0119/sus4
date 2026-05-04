@@ -58,6 +58,11 @@ type changeRow struct {
 }
 
 type Model struct {
+	// revision is bumped on every state change that affects the
+	// rendered output. The app-level view cache (app.viewCache) reads
+	// it to short-circuit Render when nothing has actually changed.
+	revision int
+
 	mode      Mode
 	rootDir   string
 	repoOK    bool
@@ -93,14 +98,26 @@ func New(rootDir string, iconsEnabled bool) Model {
 	}
 }
 
+// Revision returns the state-version counter. Bumps on any change
+// that affects the rendered output.
+func (m *Model) Revision() int { return m.revision }
+
 // SetSize reports terminal dimensions for the sidebar pane.
 func (m *Model) SetSize(w, h int) {
+	if m.width != w || m.height != h {
+		m.revision++
+	}
 	m.width = w
 	m.height = h
 }
 
 // SetRepoAvailable toggles whether ModeChanges is functional.
-func (m *Model) SetRepoAvailable(ok bool) { m.repoOK = ok }
+func (m *Model) SetRepoAvailable(ok bool) {
+	if m.repoOK != ok {
+		m.revision++
+	}
+	m.repoOK = ok
+}
 
 // IsExpanded reports whether dir is currently expanded in the tree
 // view. Used by app to decide whether an fs event under dir warrants
@@ -158,7 +175,10 @@ func (m *Model) SetChanges(entries []git.StatusEntry) {
 }
 
 // SetError shows a one-line error banner inside the pane.
-func (m *Model) SetError(err error) { m.err = err }
+func (m *Model) SetError(err error) {
+	m.err = err
+	m.revision++
+}
 
 // MoveCursor moves the active cursor by delta and clamps. Returns true
 // if anything changed.
@@ -183,6 +203,7 @@ func (m *Model) MoveCursor(delta int) bool {
 		}
 		m.changesCursor = next
 	}
+	m.revision++
 	return true
 }
 
@@ -244,6 +265,7 @@ func (m *Model) CursorIndex() int {
 }
 
 func (m *Model) rebuildRows() {
+	m.revision++
 	switch m.mode {
 	case ModeTree:
 		m.rows = m.flattenTree()
