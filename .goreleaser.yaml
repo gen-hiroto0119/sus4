@@ -14,6 +14,7 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
+      - -X main.version={{.Version}}
     goos:
       - darwin
       - linux
@@ -71,19 +72,19 @@ release:
 
     Install via `go install github.com/gen-hiroto0119/tetra/cmd/tetra@{{ .Tag }}` or download a binary below.
 
-# Homebrew tap publishing — uncomment after creating gen-hiroto0119/homebrew-tap
-# and adding a HOMEBREW_TAP_TOKEN secret with `repo` scope.
-#
-# brews:
-#   - name: tetra
-#     repository:
-#       owner: gen-hiroto0119
-#       name: homebrew-tap
-#       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
-#     homepage: 'https://github.com/gen-hiroto0119/tetra'
-#     description: 'A silent code viewer for the AI coding era.'
-#     license: MIT
-#     install: |
-#       bin.install "tetra"
-#     test: |
-#       system "#{bin}/tetra", "--help"
+brews:
+  - name: tetra
+    repository:
+      owner: gen-hiroto0119
+      name: homebrew-tap
+      token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
+    homepage: 'https://github.com/gen-hiroto0119/tetra'
+    description: 'A silent code viewer for the AI coding era.'
+    license: MIT
+    install: |
+      bin.install "tetra"
+    test: |
+      # tetra is a TUI with no -h / --help flag (would launch the
+      # alt-screen and hang in CI). --version short-circuits before any
+      # tea.Program setup so it's safe to run inside brew test.
+      assert_match "tetra", shell_output("#{bin}/tetra --version")
