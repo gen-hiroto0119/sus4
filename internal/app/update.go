@@ -51,7 +51,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.repo = msg.repo
 		m.sidebar.SetRepoAvailable(msg.repo != nil)
 		if msg.repo != nil {
-			return m, gitStatusCmd(msg.repo)
+			cmds := []tea.Cmd{gitStatusCmd(msg.repo)}
+			// If the user opened a file before the repo handle resolved
+			// (the two Cmds in Init race), the marker column will be
+			// stuck blank. Now that we have the repo, fire markers for
+			// the active file so the gutter catches up.
+			if m.main.Kind() == mainview.KindFile && m.activeFile != "" {
+				cmds = append(cmds, loadFileMarkersCmd(msg.repo, m.activeFile))
+			}
+			return m, tea.Batch(cmds...)
 		}
 		return m, nil
 
@@ -88,6 +96,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeFile = msg.path
 		return m, nil
 
+	case fileMarkersLoadedMsg:
+		// Drop a markers result whose path no longer matches the
+		// active file — happens when the user navigated away while the
+		// git diff Cmd was still in flight. The activeFile field is
+		// stamped synchronously in dispatchOpenIntent so this check is
+		// reliable even when the markers Cmd resolves before the
+		// matching loadFileCmd.
+		if msg.path != m.activeFile {
+			return m, nil
+		}
+		if msg.cleared {
+			m.main.ClearMarkers(msg.path)
+		} else {
+			m.main.SetMarkers(msg.path, msg.markers)
+		}
+		return m, nil
+
 	case diffLoadedMsg:
 		if msg.err != nil {
 			m.main.SetError(msg.err)
@@ -114,7 +139,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.main.Kind() == mainview.KindFile &&
 			m.activeFile != "" &&
 			msg.ev.Path == m.activeFile {
-			cmds = append(cmds, loadFileCmd(m.activeFile, m.trueColor))
+			cmds = append(cmds,
+				loadFileCmd(m.activeFile, m.trueColor, m.theme.IsDark),
+				loadFileMarkersCmd(m.repo, m.activeFile),
+			)
 		}
 		// Re-list the parent directory when something appeared / went
 		// away there, so the sidebar tree picks up files Claude Code
@@ -147,6 +175,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if c := m.maybeDiffReloadCmd(); c != nil {
 			cmds = append(cmds, c)
+		}
+		// HEAD/index churn changes the diff against HEAD, so the
+		// marker column needs a refresh even when the file body itself
+		// is byte-identical (e.g. after `git commit`).
+		if m.main.Kind() == mainview.KindFile && m.activeFile != "" {
+			cmds = append(cmds, loadFileMarkersCmd(m.repo, m.activeFile))
 		}
 		return m, tea.Batch(cmds...)
 	}
@@ -280,7 +314,14 @@ func (m *Model) dispatchOpenIntent(intent sidebar.OpenIntent) tea.Cmd {
 	case sidebar.OpenFile:
 		m.activeDiffKind = DiffSourceNone
 		m.activeDiffPath = ""
-		return loadFileCmd(intent.Path, m.trueColor)
+		// Stamp activeFile synchronously so a fast-resolving markers
+		// Cmd (which may beat loadFileCmd to the inbox) can be matched
+		// against the right path in fileMarkersLoadedMsg.
+		m.activeFile = intent.Path
+		return tea.Batch(
+			loadFileCmd(intent.Path, m.trueColor, m.theme.IsDark),
+			loadFileMarkersCmd(m.repo, intent.Path),
+		)
 	case sidebar.OpenDiffFile:
 		m.activeDiffKind = DiffSourceFile
 		m.activeDiffPath = intent.Path

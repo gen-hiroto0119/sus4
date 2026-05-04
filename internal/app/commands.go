@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -70,14 +71,14 @@ func gitStatusCmd(repo *git.Repo) tea.Cmd {
 	}
 }
 
-func loadFileCmd(path string, trueColor bool) tea.Cmd {
+func loadFileCmd(path string, trueColor, dark bool) tea.Cmd {
 	return func() tea.Msg {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return fileLoadedMsg{path: path, err: err}
 		}
 		content = bytes.ReplaceAll(content, []byte{'\t'}, []byte(tabExpansion))
-		r := highlight.Highlight(path, content, trueColor)
+		r := highlight.Highlight(path, content, trueColor, dark)
 		banner := ""
 		if r.Plain {
 			banner = r.Reason
@@ -138,6 +139,73 @@ func pumpWatcherCmd(w *watcher.Watcher) tea.Cmd {
 			return gitMetaMsg{ev: ev}
 		}
 	}
+}
+
+// loadFileMarkersCmd computes the per-line ChangeKind map for absPath
+// so the file view can paint a gutter strip à la VSCode's git gutter.
+//
+// Three outcomes:
+//   1. Tracked file with a diff vs HEAD → parse `git diff HEAD --` and
+//      run it through diffview.Markers.
+//   2. Untracked file (claude wrote a new file, never staged) →
+//      synthesize an all-Add map by reading the file directly. No git
+//      diff command can produce this cleanly (the file isn't in HEAD),
+//      so we count newlines ourselves.
+//   3. Tracked but unchanged, or any soft failure (no repo, path
+//      outside the working tree, git error) → cleared=true tells the
+//      renderer to drop the marker column entirely.
+func loadFileMarkersCmd(repo *git.Repo, absPath string) tea.Cmd {
+	if repo == nil || absPath == "" {
+		return func() tea.Msg { return fileMarkersLoadedMsg{path: absPath, cleared: true} }
+	}
+	return func() tea.Msg {
+		rel, err := filepath.Rel(repo.Root(), absPath)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			return fileMarkersLoadedMsg{path: absPath, cleared: true}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), gitCmdTimeout)
+		defer cancel()
+		relSlash := filepath.ToSlash(rel)
+
+		// Untracked: git diff HEAD returns empty for paths git doesn't
+		// know about, so we have to detect this case explicitly. Mark
+		// every line as ChangeAdd — semantically this *is* a fully-
+		// added file from HEAD's point of view.
+		if !repo.IsTracked(ctx, relSlash) {
+			data, err := os.ReadFile(absPath)
+			if err != nil {
+				return fileMarkersLoadedMsg{path: absPath, cleared: true}
+			}
+			n := countLines(data)
+			markers := make(map[int]diffview.ChangeKind, n)
+			for i := 1; i <= n; i++ {
+				markers[i] = diffview.ChangeAdd
+			}
+			return fileMarkersLoadedMsg{path: absPath, markers: markers}
+		}
+
+		raw, err := repo.DiffFile(ctx, relSlash)
+		if err != nil {
+			return fileMarkersLoadedMsg{path: absPath, cleared: true}
+		}
+		markers := diffview.Markers(diffview.Parse(raw))
+		return fileMarkersLoadedMsg{path: absPath, markers: markers}
+	}
+}
+
+// countLines returns the line count for the synthetic all-Add path.
+// Mirrors the convention text editors use: a final \n does not introduce
+// a phantom empty line, but a file ending without \n still counts its
+// last line.
+func countLines(data []byte) int {
+	if len(data) == 0 {
+		return 0
+	}
+	n := bytes.Count(data, []byte{'\n'})
+	if data[len(data)-1] != '\n' {
+		n++
+	}
+	return n
 }
 
 func loadWorkingDiffCmd(repo *git.Repo) tea.Cmd {

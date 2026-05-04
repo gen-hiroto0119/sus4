@@ -36,6 +36,12 @@ type Model struct {
 	filePath   string
 	fileLines  []string
 	fileBanner string
+	// fileMarkers maps 1-based new-file line numbers to a ChangeKind so
+	// the renderer can paint a one-cell git-gutter column. nil disables
+	// the column entirely (non-git directories, untracked files, or
+	// markers not yet computed); an empty map keeps the column visible
+	// but draws no glyphs (clean tree).
+	fileMarkers map[int]diffview.ChangeKind
 
 	// Diff content.
 	diffTitle string
@@ -75,19 +81,49 @@ func (m *Model) ShowEmpty() {
 	m.saveScroll()
 	m.kind = KindEmpty
 	m.scroll = 0
+	m.filePath = ""
+	m.fileMarkers = nil
 }
 
 // ShowFile installs already-highlighted output as the file view.
 // content may contain ANSI escapes (one screen line per element of
 // strings.Split(content, "\n")).
+//
+// Markers are kept across re-loads of the same path so a marker Cmd
+// that resolved early (before the body Cmd) survives. They are dropped
+// only when the path itself changes from one tracked file to another —
+// the previous file's line numbering doesn't apply anymore.
 func (m *Model) ShowFile(path, content, banner string) {
 	m.saveScroll()
+	if m.filePath != "" && m.filePath != path {
+		m.fileMarkers = nil
+	}
 	m.kind = KindFile
 	m.filePath = path
 	m.fileBanner = banner
 	m.fileLines = strings.Split(strings.TrimRight(content, "\n"), "\n")
 	m.scroll = m.recallScroll(memKey{KindFile, path})
 	m.err = nil
+}
+
+// SetMarkers attaches the per-line change classification map. Caller
+// (app layer) is responsible for staleness checking against its own
+// activeFile bookkeeping — by the time this method is reached, the
+// path-vs-active-file check has already passed.
+//
+// Storing markers before ShowFile arrives is intentionally allowed: a
+// fast-resolving markers Cmd can populate m.fileMarkers and the next
+// ShowFile (for the same path) will draw them instead of clearing.
+// markers may be empty to indicate "tracked but no pending changes".
+func (m *Model) SetMarkers(path string, markers map[int]diffview.ChangeKind) {
+	m.fileMarkers = markers
+}
+
+// ClearMarkers drops the gutter marker column entirely (non-git path,
+// untracked file, or git-diff failure). Same caveat as SetMarkers re
+// staleness: app layer pre-validates path.
+func (m *Model) ClearMarkers(path string) {
+	m.fileMarkers = nil
 }
 
 // ShowDiff installs a parsed unified diff. title is shown in a header
@@ -215,7 +251,11 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 	if gutterDigits < 1 {
 		gutterDigits = 1
 	}
-	gutterW := gutterDigits + 1 // trailing space
+	markerCol := 0
+	if m.fileMarkers != nil {
+		markerCol = 1 // one cell for the change-marker bar
+	}
+	gutterW := markerCol + gutterDigits + 1 // [marker][digits][space]
 	contentW := w - gutterW
 	showGutter := contentW >= 1
 	if !showGutter {
@@ -223,7 +263,15 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 	}
 
 	gutterStyle := t.DimStyle()
-	emptyGutter := gutterStyle.Render(strings.Repeat(" ", gutterDigits) + " ")
+	// Bold + LEFT HALF BLOCK (▌) so the marker fills more of the cell
+	// than ▎ (one-quarter block) did and reads clearly even in dim
+	// terminal palettes. The colours match the unified-diff view so a
+	// reader recognises +/-/mod at a glance.
+	addStyle := lipgloss.NewStyle().Foreground(t.DiffAdd).Bold(true)
+	modStyle := lipgloss.NewStyle().Foreground(t.DiffHunk).Bold(true)
+	delStyle := lipgloss.NewStyle().Foreground(t.DiffDel).Bold(true)
+	emptyMarker := " "
+	emptyGutter := strings.Repeat(" ", markerCol) + gutterStyle.Render(strings.Repeat(" ", gutterDigits)+" ")
 	rows := make([]string, 0, bodyRows)
 	for i, line := range slice(m.fileLines, m.scroll, len(m.fileLines)) {
 		if len(rows) >= bodyRows {
@@ -241,7 +289,18 @@ func (m *Model) renderFile(t theme.Theme, w, h int) string {
 				var prefix string
 				if j == 0 {
 					lineNo := m.scroll + i + 1
-					prefix = gutterStyle.Render(fmt.Sprintf("%*d ", gutterDigits, lineNo))
+					marker := emptyMarker
+					if markerCol > 0 {
+						switch m.fileMarkers[lineNo] {
+						case diffview.ChangeAdd:
+							marker = addStyle.Render("▌")
+						case diffview.ChangeMod:
+							marker = modStyle.Render("▌")
+						case diffview.ChangeDel:
+							marker = delStyle.Render("▌")
+						}
+					}
+					prefix = marker + gutterStyle.Render(fmt.Sprintf("%*d ", gutterDigits, lineNo))
 				} else {
 					prefix = emptyGutter
 				}
@@ -353,7 +412,7 @@ func renderDiffLines(t theme.Theme, lines []diffview.Line, w int, trueColor bool
 			body = hunkStyle.Render(l.Text)
 		case diffview.LineFileHeader:
 			if m := diffGitRe.FindStringSubmatch(l.Text); m != nil {
-				hl = highlight.NewLineHighlighter(m[1], trueColor)
+				hl = highlight.NewLineHighlighter(m[1], trueColor, t.IsDark)
 			} else {
 				hl = nil
 			}

@@ -117,6 +117,22 @@ func (r *Repo) Show(ctx context.Context, commit string) (string, error) {
 	return string(out), nil
 }
 
+// IsTracked reports whether path (repo-relative, slash-separated) is
+// known to the index. False covers both untracked files and outright
+// non-existent paths — callers that need to distinguish should stat
+// the path themselves.
+//
+// Implementation: `git ls-files --error-unmatch` exits 0 when the path
+// is in the index, non-zero otherwise. We swallow stderr because the
+// caller treats a missing file as a soft state, not an error to log.
+func (r *Repo) IsTracked(ctx context.Context, path string) bool {
+	cmd := exec.CommandContext(ctx, "git", "ls-files", "--error-unmatch", "--", path)
+	cmd.Dir = r.root
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run() == nil
+}
+
 // HEAD returns the current HEAD ref (short SHA or symbolic name when
 // resolvable). Useful for cache invalidation.
 func (r *Repo) HEAD(ctx context.Context) (string, error) {

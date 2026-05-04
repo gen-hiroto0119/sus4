@@ -47,6 +47,19 @@ type diffLoadedMsg struct {
 	err   error
 }
 
+// fileMarkersLoadedMsg carries the per-line change classification for
+// the (absolute) path it was computed for. The Update handler matches
+// path against m.activeFile before forwarding to mainview so that a
+// stale Cmd resolving after the user navigated away is dropped.
+type fileMarkersLoadedMsg struct {
+	path    string
+	markers map[int]diffview.ChangeKind
+	// cleared signals "file is outside any repo / untracked / errored":
+	// the renderer should drop the marker column entirely instead of
+	// drawing an empty one.
+	cleared bool
+}
+
 type watcherStartedMsg struct {
 	w   *watcher.Watcher
 	err error
