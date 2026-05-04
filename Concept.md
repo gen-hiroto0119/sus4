@@ -145,8 +145,12 @@ tetra <commit>     # 特定コミットの diff を表示
 ### 配布
 
 - GitHub Releases（GoReleaser による各 OS 向け自動ビルド）
-- Homebrew tap
-- `go install`
+- `go install github.com/gen-hiroto0119/tetra/cmd/tetra@latest`
+
+Homebrew tap は提供しない — `tetra` という名前は homebrew-core が
+別のパッケージ（Cilium Tetragon CLI）に既に取られているため。
+回避策（tap-only formula、binary 改名、alias 案内）はいずれも UX や
+プロジェクト identity を損ねるので go install 経路に絞る方針。
 
 ### Narrow terminal friendly
 
