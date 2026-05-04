@@ -39,21 +39,29 @@ Homebrew (推奨, macOS / Linux):
 
 ```bash
 brew install gen-hiroto0119/tap/tetra-tui
+tetra-tui                              # 起動コマンド
 ```
 
-Formula 名が `tetra-tui` なのは homebrew-core に同名の別パッケージがあるため。
-インストール後の実行コマンドは `tetra` (バイナリ名は変えていない)。
+Formula 名 / 実行コマンドが `tetra-tui` なのは、homebrew-core が
+既に別の `tetra` (cilium/tetragon CLI) を `bin/tetra` として配布
+しているため。被らないように tap 経路では `tetra-tui` で統一しています。
+短く打ちたい場合は `alias tetra=tetra-tui` を `.zshrc` 等に。
 
 Or via `go install`:
 
 ```bash
 go install github.com/gen-hiroto0119/tetra/cmd/tetra@latest
+tetra                                  # こちらは tetra で起動
 ```
 
-`go install` の場合は `$GOPATH/bin` (通常 `~/go/bin`) を `$PATH` に
-入れておく必要あり。バイナリだけほしいときは
+`go install` だけは binary 名が `tetra` のまま (cmd ディレクトリ名
+由来で goreleaser 設定が効かない経路)。`$GOPATH/bin` (通常 `~/go/bin`)
+を `$PATH` に入れておく必要あり。
+
+バイナリだけほしいときは
 [Releases](https://github.com/gen-hiroto0119/tetra/releases)
-ページから各 OS / arch のアーカイブを直接ダウンロード。
+ページから各 OS / arch のアーカイブを直接ダウンロード (中身は
+`tetra-tui`)。
 
 Nerd Font v3+ をターミナルで使っているとアイコンが正しく表示される。
 おすすめは [Moralerspace HW NF](https://github.com/yuru7/moralerspace) や
