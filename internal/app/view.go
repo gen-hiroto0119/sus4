@@ -108,14 +108,16 @@ func (m Model) renderHelp() string {
 	rows := []string{
 		"tetra — keymap",
 		"",
-		"  Tab          Switch focus (sidebar ⇄ main)",
-		"  ←  →         Sidebar mode (files ⇄ changes)",
-		"  ↑  ↓ / k j   Move / scroll line",
-		"  PgUp PgDn    Scroll page",
-		"  Home End     Jump to top / bottom",
-		"  Enter        Open file / expand directory",
-		"  Shift+?      Toggle this help",
-		"  q  Ctrl-C    Quit",
+		"  Tab                       Switch focus (sidebar ⇄ main)",
+		"  ←  →    / h  l            Sidebar mode (files ⇄ changes)",
+		"  ↑  ↓    / k  j            Move / scroll line",
+		"  PgUp    / Ctrl-B          Scroll page up",
+		"  PgDn    / Ctrl-F / Space  Scroll page down",
+		"  g       / Home            Jump to top",
+		"  G       / End             Jump to bottom",
+		"  Enter                     Open file / expand directory",
+		"  Shift+?                   Toggle this help",
+		"  q       / Ctrl-C          Quit",
 	}
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

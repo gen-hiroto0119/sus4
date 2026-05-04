@@ -88,12 +88,16 @@ AI がコードを書いている横で、人間はそれを観察する。`tetr
 ### キーマップ
 
 ```
-Tab      : フォーカス切替（サイドバー ⇄ メインビュー）
-←/→      : サイドバーモード切替
-↑/↓      : フォーカス先で動作（項目移動 or 縦スクロール）
-Enter    : 選択項目を開く
-Shift+?  : ヘルプ
-q        : 終了
+Tab            : フォーカス切替（サイドバー ⇄ メインビュー）
+←/→  / h/l     : サイドバーモード切替
+↑/↓  / k/j     : 項目移動 or 縦スクロール
+PgUp / Ctrl-B  : 1 ページ上
+PgDn / Ctrl-F  / Space : 1 ページ下
+g    / Home    : 先頭
+G    / End     : 末尾
+Enter          : 選択項目を開く
+Shift+?        : ヘルプ
+q   / Ctrl-C   : 終了
 ```
 
 ### 自動追従（File Watching）
@@ -167,25 +171,31 @@ tmux の分割画面や狭いターミナルでも動作するように設計す
 - ファイル変更の自動追従（fsnotify）
 - `.git/HEAD` / `.git/index` 監視
 - カーソル位置保持
-- 基本的な除外（`node_modules`、`.git`、`vendor`）
+- ビルド成果物 / cache dir 群を除外（`.git`、`node_modules`、`vendor`、
+  `.next`、`dist`、`build`、`target`、`__pycache__`、`.idea` 等 28 個）
 - TOML 設定ファイル
 - Material Design Nerd Font アイコン
 - Markdown プレビュー（glamour）
-- ヘルプ画面（`?`）
+- ヘルプ画面（`Shift+?`）
+- **テーマ（dark / light / auto）**: ターミナル背景を OSC 11 で
+  検出し dark / light を自動選択（`theme = "auto"` がデフォルト）
+- **`tetra update` サブコマンド**: 内部で `go install ...@latest`
+  を実行する自己更新ラッパ
+- **CPU 暴走対策**: fs-event throttle、View() の revision-cache、
+  git 呼び出しの `--no-optional-locks` で feedback loop を切る、
+  fs-event burst を計測する CI bench gate（5,000 ns/op 上限）
 
 ### v0.2
 
 - `tetra <commit-hash>` 起動対応
 - `tetra <file>` 起動対応
 - デバウンス処理、atomic save 対応
-- ヘルプ画面
 
 ### v0.3 以降
 
-- 設定ファイル（テーマ、キーバインド）
+- カスタムキーバインド設定
 - ファイル名 fuzzy find
 - `.gitignore` フルパース
-- パフォーマンス改善
 
 ## Closing Thought
 
