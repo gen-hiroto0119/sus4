@@ -28,3 +28,22 @@ jobs:
 
       - name: go build
         run: go build ./...
+
+      # Steady-state CPU regression watch. The fs-event burst bench in
+      # internal/app/cpu_probe_test.go must stay under a sane ceiling
+      # per iter so the runaway-CPU class of bug (e.g. os.Stat in the
+      # hot path, missing view cache) gets caught at PR time rather
+      # than after release. Numbers are in ns/op.
+      #
+      # Current target: < 5,000 ns/op. Pre-cache baseline was ~280,000
+      # ns/op (the regression we just fixed). Headroom is wide so
+      # routine churn doesn't false-positive the gate.
+      - name: bench (cpu probe)
+        run: |
+          set -euo pipefail
+          go test -run=^$ -bench BenchmarkUpdateFsEventBurst -benchtime 2s -count 1 \
+            ./internal/app/ | tee /tmp/bench.out
+          # Extract ns/op from the bench line and gate on it.
+          NS_PER_OP=$(awk '/BenchmarkUpdateFsEventBurst/ {print $3}' /tmp/bench.out)
+          echo "ns_per_op=$NS_PER_OP"
+          awk -v n="$NS_PER_OP" 'BEGIN { if (n+0 > 5000) { print "REGRESSION: " n " ns/op exceeds 5000"; exit 1 } else { print "ok: " n " ns/op" } }'
