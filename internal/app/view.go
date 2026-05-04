@@ -13,7 +13,7 @@ const (
 	sidebarPercent  = 30
 	sidebarMinWidth = 18
 	sidebarMaxWidth = 40
-	// Below mainOnlyWidth the sidebar is dropped entirely (Design.md §13).
+	// Below mainOnlyWidth the sidebar is dropped entirely.
 	mainOnlyWidth = 60
 )
 

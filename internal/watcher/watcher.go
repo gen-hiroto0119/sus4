@@ -1,9 +1,8 @@
 // Package watcher wraps fsnotify to feed coalesced filesystem events
 // into a Bubble Tea Update loop.
 //
-// Per Design.md §7:
 //   - the entire root tree is watched recursively (excluding the
-//     hardcoded set: .git, node_modules, vendor),
+//     hardcoded set defined in filetree.defaultExcludes),
 //   - each path's events are debounced with a 50 ms window so atomic
 //     saves (CREATE → RENAME → REMOVE) collapse into a single signal,
 //   - .git/HEAD and .git/index are watched separately and emit their
@@ -27,7 +26,7 @@ import (
 	"github.com/gen-hiroto0119/tetra/internal/filetree"
 )
 
-// debounceWindow is short enough to feel instant (Design.md §7.2: 50 ms)
+// debounceWindow is short enough to feel instant
 // while wide enough to merge editor save bursts.
 const debounceWindow = 50 * time.Millisecond
 
@@ -209,7 +208,7 @@ func (w *Watcher) flush(path string) {
 
 	// Atomic save: the original inode is gone after RENAME/REMOVE.
 	// Re-Add when the path still exists so the next save lands on
-	// our radar (Design.md §7.3 best-effort).
+	// our radar.
 	if op&(fsnotify.Rename|fsnotify.Remove) != 0 {
 		if _, err := os.Stat(path); err == nil {
 			_ = w.w.Add(path)

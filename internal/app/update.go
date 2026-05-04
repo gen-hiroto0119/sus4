@@ -13,7 +13,7 @@ import (
 
 // statusThrottle caps git status / git diff / structural tree refresh
 // to once per this window so a fs-event burst can't fork-bomb the git
-// process pool (Design.md §14).
+// process pool.
 const statusThrottle = 200 * time.Millisecond
 
 // fileReloadThrottle is the wider window for the chroma-highlight +

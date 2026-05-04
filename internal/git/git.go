@@ -1,6 +1,6 @@
 // Package git wraps the system `git` binary. We deliberately avoid
 // go-git: bigger binary, heavier deps, and the user's ~/.gitconfig is
-// best honored by reusing their installed git (Design.md §8).
+// best honored by reusing their installed git.
 //
 // The package is UI-agnostic. Callers receive Go structs only; ANSI
 // coloring is intentionally suppressed via --no-color so that
@@ -18,8 +18,7 @@ import (
 )
 
 // Repo is a handle to a git working tree. Construct via Open.
-// A nil *Repo is valid in the rest of the codebase to mean "no repo here";
-// see Design.md §3 (`repo *git.Repo  // nil ならば非 git ディレクトリ`).
+// A nil *Repo is valid in the rest of the codebase to mean "no repo here".
 type Repo struct {
 	root string
 }
@@ -49,7 +48,7 @@ func Open(ctx context.Context, dir string) (*Repo, error) {
 func (r *Repo) Root() string { return r.root }
 
 // StatusKind classifies a porcelain entry. The granularity matches what
-// the sidebar groups by (Design.md §6.1).
+// the sidebar groups by.
 type StatusKind int
 
 const (

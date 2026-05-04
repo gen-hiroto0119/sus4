@@ -53,7 +53,7 @@ type Options struct {
 }
 
 // Model is the root Bubble Tea model. It aggregates child component
-// state but never mutates it directly outside Update — see Design.md §3.
+// state but never mutates it directly outside Update
 type Model struct {
 	opts     Options
 	theme    theme.Theme
@@ -82,8 +82,8 @@ type Model struct {
 	// lastStatusReq / lastDiffReq / lastFileReloadReq /
 	// lastTreeRefreshReq throttle git status, git diff, the
 	// active-file body+markers reload chain, and the directory
-	// re-listing on structural fs events (Design.md §14: at most one
-	// per 200ms) so a fs-event burst can't fork-bomb the git process
+	// re-listing on structural fs events (at most one per 200ms) so a
+	// fs-event burst can't fork-bomb the git process
 	// pool nor re-walk the tree on every micro-event. Without these,
 	// a build watcher rewriting files at 10–20 Hz had been driving
 	// tetra to 200%+ CPU on busy projects.

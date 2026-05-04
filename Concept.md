@@ -1,204 +1,94 @@
+# Concept
+
 > A silent code viewer for the AI coding era.
 
-## What is tetra
+## What
 
-`tetra` は、**書かない人のためのコード閲覧ツール**である。
+ターミナルで動く、コード閲覧専用の TUI。**画面に出すのはコードと diff だけ**。
+編集機能・LSP・補完・通知はそもそも持たない。
 
-ターミナルで動く TUI で、ファイルとコードと diff を、ただ静かに眺めるためだけに作られている。編集機能は持たない。LSP もシンタックスチェックも通知もない。Claude Code や Cursor がコードを書き、人間はそれを観察する——そんな新しい開発スタイルに最適化された、極端に絞り込まれたビューアである。
+## Why
 
-## Why tetra exists
+AI コーディングが普及して「自分では書かないが読む必要がある人」が増えた。
+既存エディタ (VSCode 等) は「書く人」のために作られていて、書かない時間にも
+LSP の波線・補完・通知が主張してくる。観察に集中したいとき、それはノイズ。
 
-### 課題
-
-AI コーディングの普及により、「自分でコードを書かないが、コードを読む必要がある人」が増えている。PdM、デザイナー、非エンジニア、そして AI にコーディングを任せる開発者自身も、その対象だ。
-
-しかし、既存のコードエディタはすべて「書く人」のために設計されている。VSCode を開けば、書かないにもかかわらず、編集を前提とした UI が主張してくる：
-
-- 拡張機能の通知
-- LSP の診断、赤い波線
-- AI サジェストのポップアップ
-- Git の差分通知
-- 重い起動時間
-
-「ただ読みたいだけ」のニーズに対して、これらはノイズでしかない。
-
-### 既存ツールの限界
-
-- `cat` / `bat` ：単一ファイル表示にとどまる、ナビゲーションがない
-- `less` ：シンタックスハイライトが弱い、diff 表示に向かない
-- `lazygit` / `gitui` ：Git 操作中心、コード閲覧体験は副次的
-- IDE のリードオンリーモード：機能を「無効化」しただけ、思想がない
-
-「コード閲覧専用に振り切った道具」は、まだ存在しない。
-
-## Design Philosophy
-
-### 1. 静か（Quiet）
-
-通知を出さない。サジェストを出さない。診断を出さない。LSP を起動しない。バックグラウンドで何も走らせない。**画面に出るのはコードと diff だけ**。
-
-### 2. 編集できない（Read-only by design）
-
-「編集機能を無効化」するのではなく、**そもそも実装しない**。書こうとするキーは何も起こらない。これは制約ではなく、思想である。
-
-### 3. 観察に最適化（Optimized for observation）
-
-AI がコードを書いている横で、人間はそれを観察する。`tetra` は **ファイル変更を自動的に検知し、画面を追従させる**。Claude Code がファイルを書き換えれば、`tetra` の表示も即座に更新される。コミットが走れば、変更ファイル一覧が自動で更新される。
-
-### 4. 静かなる相棒（Quiet companion）
-
-`tetra` は何も提案しない。何も指摘しない。ただ、横に静かに居て、人間が「いま何が書かれているか」を確認したいときに、すぐ答える。
+`tetra` は AI が書いている横で、人間は静かに観察する、という新しい開発スタイルに
+振り切った道具。
 
 ## Naming
 
-`tetra` は、ギリシア語の数詞 **τέτρα = 4** から取られている。複数の意味が同時に流れ込む名前として選んだ：
+ギリシア語の τέτρα (= 4) から:
 
-### 思想との一致
+- **tetrachord** (4 音音階) — 解決しない、保留された連なり
+- **tetrahedron** (四面体) — 最少の頂点で成立する安定形 (read-only の意匠)
+- **第 4 の dev surface** — Editor / Terminal / Browser に並ぶ Viewer
 
-**4 という数字に 3 つの厚み**が乗っている：
+何も提案せず、何も書き換えず、ただ静かに開いている。
 
-- **tetrachord（古代ギリシアの 4 音音階）** — 旋法の最小単位、和声の手前にある「保留された連なり」。`tetra` は素朴に 4 音を並べて鳴らすだけで、解決しない。観察者の姿勢そのもの。
-- **tetrahedron（四面体）** — 最少の頂点で成立する 3D 立体、つまり**安定の最小形**。動かない、崩れない、ただそこに在る。read-only の意匠。
-- **AI 時代の 4 番目の dev surface** — Editor / Terminal / Browser に並ぶ「Viewer」、書く 3 つに対する**第 4 の観察レンズ**。
+## Core Features (v0.1)
 
-### 動かない、変えない、ただそこに在る
-
-`tetra` は何も提案しない、何も指摘しない、何も書き換えない。**4 つ目のレンズ**として、人間の隣で静かに開いている。
-
-
-
-## Core Features
-
-### 2ペインレイアウト
-
-- 左：サイドバー（ナビゲーション）
-- 右：メインビュー（コンテンツ）
-
-### サイドバーのモード
-
-1. **ファイルツリー**：ディレクトリ構造を表示
-2. **変更ファイル一覧**：working tree の未コミット変更ファイル
-
-### メインビューの表示
-
-1. **ファイル閲覧**：シンタックスハイライト付き、行折り返し
-2. **diff 表示**：unified diff、未コミット変更
-3. **コミット詳細**：起動時引数で指定されたコミットの diff
-
-### キーマップ
-
-```
-Tab            : フォーカス切替（サイドバー ⇄ メインビュー）
-←/→  / h/l     : サイドバーモード切替
-↑/↓  / k/j     : 項目移動 or 縦スクロール
-PgUp / Ctrl-B  : 1 ページ上
-PgDn / Ctrl-F  / Space : 1 ページ下
-g    / Home    : 先頭
-G    / End     : 末尾
-Enter          : 選択項目を開く
-Shift+?        : ヘルプ
-q   / Ctrl-C   : 終了
-```
-
-### 自動追従（File Watching）
-
-- `fsnotify` でファイル変更を検知し、開いているファイルを自動再読込
-- `.git/HEAD` と `.git/index` を監視し、コミットや checkout を反映
-- カーソル位置・スクロール位置は保持
-
-### 起動コマンド
-
-```bash
-tetra              # カレントディレクトリで起動
-tetra <file>       # 特定ファイルを直開き
-tetra <commit>     # 特定コミットの diff を表示
-```
+- 2 ペインレイアウト (左: ファイルツリー / 変更一覧、右: コード / diff)
+- シンタックスハイライト (chroma) と Markdown プレビュー (glamour)
+- 変更マーカー: HEAD との diff を行頭の細バーで可視化 (add / mod / del)
+- 自動追従: fsnotify でファイル / `.git/HEAD` / `.git/index` を監視
+- ダーク / ライト / 自動 (`theme = "auto"` で OSC 11 検出)
+- TOML 設定ファイル
+- Material Design Nerd Font アイコン
+- `tetra update` で `go install ...@latest` 実行
 
 ## Non-Goals
 
-`tetra` が **やらないこと**を明示する。これは制約ではなく、設計上の選択である：
+これらは **やらない**。制約ではなく設計上の選択:
 
-- ❌ ファイル編集
-- ❌ LSP、診断、シンタックスチェック
-- ❌ AI サジェスト、補完
-- ❌ コミットグラフの可視化
-- ❌ Git 操作（commit、push、branch 切替など）
-- ❌ side-by-side diff（narrow terminal friendly のため unified のみ）
-- ❌ 横スクロール（折り返し表示のみ）
-- ❌ 通知、ポップアップ、モーダル
-- ❌ プラグインシステム
+- ファイル編集
+- LSP / 診断 / 補完 / AI サジェスト
+- Git 操作 (commit / push / branch)
+- side-by-side diff (narrow terminal friendly のため unified のみ)
+- 横スクロール (折り返しのみ)
+- 通知 / ポップアップ / モーダル
+- プラグインシステム
+- マウス操作
 
-## Target Users
+## Architecture (要点)
 
-- AI コーディング時代の **書かない人**：PdM、デザイナー、非エンジニア
-- AI にコーディングを任せる開発者で、観察に集中したい人
-- ターミナルで完結する開発フローを好む人
-- `tmux`、`Neovim`、ターミナルファイルマネージャなどと組み合わせたい人
+- Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea) (Elm Architecture)
+- Watcher / View / Cmd の境界をはっきり分けて、global mutable state を持たない
+- すべての I/O は `tea.Cmd` 経由 (goroutine) → 結果は `tea.Msg` で戻す
+- 詳しい設計判断は git の commit message を参照 (永続化されてる)
 
-## Implementation
+### Performance ガード
 
-### 言語とライブラリ
+「画面に出るのはコードと diff だけ、バックグラウンドで何も走らせない」を CPU レベルで満たすため:
 
-- **Go**：シングルバイナリでの配布のため
-- **[Bubble Tea](https://github.com/charmbracelet/bubbletea)**：TUI フレームワーク（Elm Architecture）
-- **[Lipgloss](https://github.com/charmbracelet/lipgloss)**：スタイリング
-- **[Bubbles](https://github.com/charmbracelet/bubbles)**：viewport などのコンポーネント
-- **[Chroma](https://github.com/alecthomas/chroma)**：シンタックスハイライト
-- **[fsnotify](https://github.com/fsnotify/fsnotify)**：ファイル変更検知
+- fs-event throttle (status 200ms / file reload 500ms)
+- View() の revision-cache (毎フレーム再計算しない)
+- git の `--no-optional-locks` (自分の `.git/index` 更新による自己フィードバック切り)
+- CI bench gate (`internal/app/cpu_probe_test.go` が 5,000 ns/op 上限で監視)
 
-### 配布
+## Distribution
 
-- GitHub Releases（GoReleaser による各 OS 向け自動ビルド）
-- `go install github.com/gen-hiroto0119/tetra/cmd/tetra@latest`
+```bash
+go install github.com/gen-hiroto0119/tetra/cmd/tetra@latest
+```
 
-Homebrew tap は提供しない — `tetra` という名前は homebrew-core が
-別のパッケージ（Cilium Tetragon CLI）に既に取られているため。
-回避策（tap-only formula、binary 改名、alias 案内）はいずれも UX や
-プロジェクト identity を損ねるので go install 経路に絞る方針。
-
-### Narrow terminal friendly
-
-tmux の分割画面や狭いターミナルでも動作するように設計する。画像プロトコル不要、Unicode のみで完結。
+GitHub Releases から OS 別バイナリも配布。Homebrew は提供しない (homebrew-core の `tetra` (Cilium Tetragon) と名前衝突するため)。
 
 ## Roadmap
 
-### v0.1（MVP）✅ shipped
-
-- 2ペインレイアウト、フォーカス切替
-- ファイルツリー、コード閲覧、シンタックスハイライト
-- 変更ファイル一覧、unified diff 表示（Claude Code 風の +/- BG ティント + 両側行番号）
-- ファイル閲覧中の変更マーカー（HEAD との diff を行頭の細バーで可視化: add / mod / del）
-- ファイル変更の自動追従（fsnotify）
-- `.git/HEAD` / `.git/index` 監視
-- カーソル位置保持
-- ビルド成果物 / cache dir 群を除外（`.git`、`node_modules`、`vendor`、
-  `.next`、`dist`、`build`、`target`、`__pycache__`、`.idea` 等 28 個）
-- TOML 設定ファイル
-- Material Design Nerd Font アイコン
-- Markdown プレビュー（glamour）
-- ヘルプ画面（`Shift+?`）
-- **テーマ（dark / light / auto）**: ターミナル背景を OSC 11 で
-  検出し dark / light を自動選択（`theme = "auto"` がデフォルト）
-- **`tetra update` サブコマンド**: 内部で `go install ...@latest`
-  を実行する自己更新ラッパ
-- **CPU 暴走対策**: fs-event throttle、View() の revision-cache、
-  git 呼び出しの `--no-optional-locks` で feedback loop を切る、
-  fs-event burst を計測する CI bench gate（5,000 ns/op 上限）
+### v0.1 ✅ shipped
+すべての Core Features 上記。
 
 ### v0.2
-
-- `tetra <commit-hash>` 起動対応
-- `tetra <file>` 起動対応
-- デバウンス処理、atomic save 対応
+- `tetra <commit>` 起動対応 (コミット詳細表示)
+- `tetra <file>` 起動対応 (ファイル直開き)
+- atomic save / debounce の本格対応
 
 ### v0.3 以降
-
-- カスタムキーバインド設定
-- ファイル名 fuzzy find
+- カスタムキーバインド
 - `.gitignore` フルパース
+- ファイル名 fuzzy find
 
 ## Closing Thought
 
-AI がコードを書く時代に、人間に必要なのは **書く道具の進化** ではなく、**読む道具の進化** かもしれない。
-
-`tetra` は、その仮説に対する一つの答えである。****
+AI がコードを書く時代に必要なのは「書く道具の進化」ではなく「読む道具の進化」かもしれない。`tetra` はその仮説に対する一つの答え。

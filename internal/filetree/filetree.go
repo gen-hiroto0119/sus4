@@ -3,7 +3,7 @@
 //
 // Loading is lazy — Read(dir) returns only the immediate children of dir.
 // Callers (typically the sidebar) decide when to expand a directory and
-// invoke Read again on the chosen child. This matches Design.md §11
+// invoke Read again on the chosen child.
 // ("構築は遅延展開：起動時にはルート直下のみ列挙。展開時に子をロード").
 package filetree
 
@@ -57,7 +57,7 @@ var defaultExcludes = map[string]struct{}{
 
 // MaxEntriesPerDir caps how many entries we surface from a single directory.
 // Anything beyond is folded into a single Truncated node so a 50k-entry
-// dir cannot hang the UI. Threshold matches Design.md §11.
+// dir cannot hang the UI.
 const MaxEntriesPerDir = 500
 
 type NodeKind int

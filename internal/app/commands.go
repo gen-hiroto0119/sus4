@@ -28,9 +28,9 @@ import (
 // width and rendered width in lock-step.
 const tabExpansion = "    "
 
-// Per Design.md §8 we cap individual git invocations so a hung
-// child can't freeze the UI thread (Cmds run in a goroutine but a
-// blocked syscall would still pile up).
+// gitCmdTimeout caps individual git invocations so a hung child can't
+// freeze the UI thread (Cmds run in a goroutine but a blocked syscall
+// would still pile up).
 const gitCmdTimeout = 5 * time.Second
 
 func openRepoCmd(dir string) tea.Cmd {

@@ -144,8 +144,7 @@ func parseArgs(args []string) (app.Options, error) {
 		return opts, nil
 	}
 
-	// v0.1: accept the argument shape but always fall back to dir mode
-	// (Design.md §5: "v0.1 では引数を受けても警告を出して no arg 経路にフォールバックする").
+	// v0.1: accept the argument shape but always fall back to dir mode.
 	// File / commit dispatching is implemented in v0.2.
 	opts.Target = app.StartupTarget{Kind: app.StartupDir, Arg: rest[0]}
 	fmt.Fprintf(os.Stderr, "tetra: argument %q ignored in v0.1 (file/commit modes land in v0.2)\n", rest[0])

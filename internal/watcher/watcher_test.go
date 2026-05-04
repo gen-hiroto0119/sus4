@@ -14,7 +14,7 @@ func TestWatcherCoalescesBurstIntoSingleEvent(t *testing.T) {
 
 	path := filepath.Join(dir, "a.txt")
 	// Three rapid writes within the debounce window must surface as one
-	// event (this is the "atomic save burst" case from Design.md §7.2).
+	// event (this is the "atomic save burst" case).
 	for i := 0; i < 3; i++ {
 		if err := os.WriteFile(path, []byte{byte(i)}, 0o644); err != nil {
 			t.Fatal(err)

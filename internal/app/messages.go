@@ -9,8 +9,8 @@ import (
 
 // Messages produced by async Cmds and consumed by Update.
 //
-// Per Design.md §4, messages are kept small and many. Each carries
-// only the data Update needs to decide the next state transition.
+// Messages are kept small and many. Each carries only the data Update
+// needs to decide the next state transition.
 
 type repoOpenedMsg struct {
 	repo *git.Repo

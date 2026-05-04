@@ -2,8 +2,8 @@
 // (v0.2) a specific commit's patch.
 //
 // The view holds rendered text only. It does not perform I/O; the app
-// layer feeds it via Set* methods after Cmds resolve. Per Design.md
-// §6.2, scroll positions are remembered per (kind, identifier).
+// layer feeds it via Set* methods after Cmds resolve. Scroll positions
+// are remembered per (kind, identifier).
 package mainview
 
 import (

@@ -2,7 +2,7 @@
 
 ターミナルで動く、コード閲覧専用の TUI。AI コーディング時代の「書かない人」のために、画面に出すのはコードと diff だけに絞った viewer。
 
-詳細は [Concept.md](Concept.md) / [Design.md](Design.md)。
+詳細は [Concept.md](Concept.md)。
 
 ## Install
 

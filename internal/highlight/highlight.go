@@ -1,7 +1,7 @@
 // Package highlight wraps Chroma to produce ANSI-colored source for the
 // terminal. UI layers consume strings; they don't see Chroma directly.
 //
-// Design.md §9 calls for a (path, mtime, size) LRU. v0.1 keeps it simple:
+// A (path, mtime, size) LRU is on the roadmap. v0.1 keeps it simple:
 // callers run Highlight from a tea.Cmd, and the result is small enough
 // to discard between focuses. A cache lands when profiling shows it
 // helps the "1 second to reflect a Claude Code edit" budget.
@@ -21,7 +21,7 @@ import (
 )
 
 // MaxBytes is the cutoff above which we render the file as plain text
-// rather than running Chroma. Matches Design.md §9.2.
+// rather than running Chroma.
 const MaxBytes = 1 << 20 // 1 MiB
 
 // Result captures both the rendered text and metadata the UI needs to
@@ -108,7 +108,7 @@ func pickLexer(filename string, content []byte) chroma.Lexer {
 	return chroma.Coalesce(l)
 }
 
-// isBinary follows the heuristic from Design.md §9.2: NUL byte in the
+// isBinary follows the heuristic: NUL byte in the
 // first 8 KiB.
 func isBinary(content []byte) bool {
 	limit := len(content)
@@ -119,7 +119,7 @@ func isBinary(content []byte) bool {
 }
 
 // TerminalSupportsTrueColor inspects the environment as Chroma users
-// commonly do (Design.md §9.1).
+// commonly do.
 func TerminalSupportsTrueColor() bool {
 	v := strings.ToLower(os.Getenv("COLORTERM"))
 	return v == "truecolor" || v == "24bit"
