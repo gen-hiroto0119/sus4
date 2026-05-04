@@ -91,6 +91,7 @@ type Model struct {
 	lastDiffReq        time.Time
 	lastFileReloadReq  time.Time
 	lastTreeRefreshReq time.Time
+	lastMarkersReq     time.Time
 
 	// cache is the View() result memo, behind a pointer so the value-
 	// receiver View can update it. See app/view.go viewCache for the

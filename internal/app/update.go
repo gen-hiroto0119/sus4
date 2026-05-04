@@ -188,9 +188,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// HEAD/index churn changes the diff against HEAD, so the
 		// marker column needs a refresh even when the file body itself
-		// is byte-identical (e.g. after `git commit`).
-		if m.main.Kind() == mainview.KindFile && m.activeFile != "" {
-			cmds = append(cmds, loadFileMarkersCmd(m.repo, m.activeFile))
+		// is byte-identical (e.g. after `git commit`). Throttled here
+		// because our own git status touches .git/index, which the
+		// watcher reports right back as a gitMetaMsg — without the
+		// throttle the resulting feedback loop pinned ~25% of one
+		// core to fork-exec.
+		if c := m.maybeMarkersOnlyCmd(); c != nil {
+			cmds = append(cmds, c)
 		}
 		return m, tea.Batch(cmds...)
 	}
@@ -236,6 +240,25 @@ func (m *Model) maybeTreeRefreshCmd(parent string) tea.Cmd {
 		return loadChildrenCmd(parent)
 	}
 	return nil
+}
+
+// maybeMarkersOnlyCmd fires the markers-only Cmd (no body reload),
+// throttled by lastMarkersReq. Used in the gitMetaMsg path: when
+// HEAD / index churn, the file bytes haven't changed but the diff vs
+// HEAD has, so we need new markers without re-running chroma. The
+// throttle prevents the self-feedback loop: our own `git status`
+// touches .git/index → watcher fires gitMetaMsg → we'd otherwise
+// fork another git diff right back, indefinitely.
+func (m *Model) maybeMarkersOnlyCmd() tea.Cmd {
+	if m.activeFile == "" || m.main.Kind() != mainview.KindFile || m.repo == nil {
+		return nil
+	}
+	now := time.Now()
+	if now.Sub(m.lastMarkersReq) < statusThrottle {
+		return nil
+	}
+	m.lastMarkersReq = now
+	return loadFileMarkersCmd(m.repo, m.activeFile)
 }
 
 // maybeFileReloadCmd batches the active-file body reload and the

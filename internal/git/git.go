@@ -144,7 +144,16 @@ func (r *Repo) HEAD(ctx context.Context) (string, error) {
 }
 
 func run(ctx context.Context, dir string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	// --no-optional-locks tells git not to acquire optional locks that
+	// would also write to .git (notably the index.stat refresh on
+	// `status`). Without it, our own status / diff invocations
+	// modify .git/index, which the watcher sees as a change, which
+	// triggers gitMetaMsg, which fires another git invocation: a
+	// self-feeding loop pinning ~25% of one core to fork-exec on a
+	// busy project. The flag is safe — read-only operations don't
+	// need the locks anyway.
+	full := append([]string{"--no-optional-locks"}, args...)
+	cmd := exec.CommandContext(ctx, "git", full...)
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
