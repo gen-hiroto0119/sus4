@@ -26,6 +26,11 @@ func Resolve(msg tea.KeyMsg) Action {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return ActionQuit
+	// "?" is the post-shift character bubbletea emits when the user
+	// presses Shift+/ (US/JIS layouts). Docs and on-screen hints label
+	// the keystroke as "Shift+?" for clarity, but the event we actually
+	// receive is the bare "?" — there is no separate "shift+?" string
+	// from bubbletea for printable shifted characters.
 	case "?":
 		return ActionHelp
 	case "tab":
