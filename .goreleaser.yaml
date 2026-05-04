@@ -73,7 +73,11 @@ release:
     Install via `go install github.com/gen-hiroto0119/tetra/cmd/tetra@{{ .Tag }}` or download a binary below.
 
 brews:
-  - name: tetra
+  # Formula name is tetra-tui (not tetra) because homebrew-core already
+  # ships an unrelated `tetra` package — `brew install tetra` resolves
+  # to that one. The binary inside this formula is still named `tetra`,
+  # so users get the same `tetra` command on PATH after install.
+  - name: tetra-tui
     repository:
       owner: gen-hiroto0119
       name: homebrew-tap
