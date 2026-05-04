@@ -32,7 +32,7 @@ func For(n filetree.Node, expanded bool) Icon {
 		}
 		return Icon{Glyph: "\U000f024b", Color: folderColor} // mdi:folder
 	case filetree.NodeTruncated:
-		return Icon{Glyph: "\U000f01d9", Color: defaultColor} // mdi:dots-horizontal
+		return Icon{Glyph: "\U000f01d8", Color: defaultColor} // mdi:dots-horizontal
 	}
 
 	if ic, ok := byName[n.Name]; ok {
@@ -60,9 +60,9 @@ var byExt = map[string]Icon{
 	"mod":      {"\U000f07d3", "#00ADD8"},
 	"sum":      {"\U000f07d3", "#00ADD8"},
 	"ts":       {"\U000f06e6", "#3178c6"}, // mdi:language-typescript
-	"tsx":      {"\U000f07ba", "#3178c6"}, // mdi:react
+	"tsx":      {"\U000f0708", "#3178c6"}, // mdi:react
 	"js":       {"\U000f031e", "#f1e05a"}, // mdi:language-javascript
-	"jsx":      {"\U000f07ba", "#f1e05a"}, // mdi:react
+	"jsx":      {"\U000f0708", "#f1e05a"}, // mdi:react
 	"mjs":      {"\U000f031e", "#f1e05a"},
 	"cjs":      {"\U000f031e", "#f1e05a"},
 	"json":     {"\U000f0626", "#cbcb41"}, // mdi:code-json
@@ -88,11 +88,11 @@ var byExt = map[string]Icon{
 	"cc":       {"\U000f0672", "#519aba"},
 	"hpp":      {"\U000f0672", "#a074c4"},
 	"java":     {"\U000f0b37", "#cc3e44"}, // mdi:language-java
-	"kt":       {"\U000f0bd1", "#F88A02"}, // mdi:language-kotlin
+	"kt":       {"\U000f1219", "#F88A02"}, // mdi:language-kotlin
 	"swift":    {"\U000f06e5", "#e37933"}, // mdi:language-swift
-	"dart":     {"\U000f01a4", "#03589C"}, // mdi:code-tags
+	"dart":     {"\U000f0174", "#03589C"}, // mdi:code-tags
 	"lua":      {"\U000f08b1", "#51a0cf"}, // mdi:language-lua
-	"vim":      {"\U000f01a4", "#019833"}, // mdi:code-tags
+	"vim":      {"\U000f0174", "#019833"}, // mdi:code-tags
 	"lock":     {"\U000f033e", "#bbbbbb"}, // mdi:lock
 	"svg":      {"\U000f0721", "#ffb13b"}, // mdi:svg
 	"png":      {"\U000f021f", "#a074c4"}, // mdi:file-image
@@ -101,10 +101,10 @@ var byExt = map[string]Icon{
 	"gif":      {"\U000f021f", "#a074c4"},
 	"webp":     {"\U000f021f", "#a074c4"},
 	"pdf":      {"\U000f0226", "#b30b00"}, // mdi:file-pdf-box
-	"zip":      {"\U000f06eb", "#eca517"}, // mdi:zip-box
-	"tar":      {"\U000f06eb", "#eca517"},
-	"gz":       {"\U000f06eb", "#eca517"},
-	"tgz":      {"\U000f06eb", "#eca517"},
+	"zip":      {"\U000f05c4", "#eca517"}, // mdi:zip-box
+	"tar":      {"\U000f05c4", "#eca517"},
+	"gz":       {"\U000f05c4", "#eca517"},
+	"tgz":      {"\U000f05c4", "#eca517"},
 }
 
 var byName = map[string]Icon{
@@ -126,6 +126,6 @@ var byName = map[string]Icon{
 	"package.json":      {"\U000f0399", "#cbcb41"}, // mdi:nodejs
 	"package-lock.json": {"\U000f0399", "#cbcb41"},
 	"tsconfig.json":     {"\U000f06e6", "#3178c6"},
-	"README.md":         {"\U000f00bd", "#519aba"}, // mdi:book-open-variant
-	"readme.md":         {"\U000f00bd", "#519aba"},
+	"README.md":         {"\U000f14f7", "#519aba"}, // mdi:book-open-variant
+	"readme.md":         {"\U000f14f7", "#519aba"},
 }
