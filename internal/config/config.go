@@ -26,7 +26,11 @@ type Config struct {
 
 func Default() Config {
 	return Config{
-		Theme: "default",
+		// "auto" lets theme.ByName query the terminal background and
+		// switch between dark / light palettes. Explicit "dark" or
+		// "light" forces one. "default" remains a synonym for dark for
+		// backward compatibility with earlier configs.
+		Theme: "auto",
 		Icons: true,
 	}
 }

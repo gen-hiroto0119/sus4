@@ -1,8 +1,18 @@
 package theme
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+)
+
+// Theme drives every coloured surface in the UI. IsDark mirrors the
+// background mode the colour set is tuned for, so call sites that need
+// to pick a *different* palette (e.g. chroma syntax styles, glamour
+// markdown renderer) can branch off it without re-detecting.
 type Theme struct {
+	IsDark         bool
 	Background     lipgloss.Color
 	Foreground     lipgloss.Color
 	Dim            lipgloss.Color
@@ -22,18 +32,41 @@ type Theme struct {
 	Error          lipgloss.Color
 }
 
-// ByName returns the theme matching name. Unknown names — including the
-// empty string — fall back to Default(). v0.1 ships only "default"; the
-// switch is the seam future themes plug into.
+// ByName resolves a config-supplied theme name to a Theme value.
+//
+// Recognised values:
+//   - "auto" / "" — query the terminal's background via OSC 11 (termenv)
+//     and pick Default (dark) or Light accordingly.
+//   - "dark" / "default" — force the dark palette.
+//   - "light" — force the light palette.
+//
+// Anything else falls back to Default. Detection runs once per call, so
+// callers should cache the result for the session.
 func ByName(name string) Theme {
-	switch name {
-	default:
+	switch strings.ToLower(name) {
+	case "light":
+		return Light()
+	case "dark", "default":
+		return Default()
+	case "auto", "":
+		return AutoDetect()
+	}
+	return Default()
+}
+
+// AutoDetect queries the host terminal's background colour and returns
+// the matching theme. Falls back to dark when the query fails — that is
+// the safer default for code-on-screen scenarios.
+func AutoDetect() Theme {
+	if termenv.HasDarkBackground() {
 		return Default()
 	}
+	return Light()
 }
 
 func Default() Theme {
 	return Theme{
+		IsDark:        true,
 		Background:    lipgloss.Color("0"),
 		Foreground:    lipgloss.Color("252"),
 		Dim:           lipgloss.Color("242"),
@@ -51,6 +84,32 @@ func Default() Theme {
 		StatusBar:     lipgloss.Color("252"),
 		StatusBarBg:   lipgloss.Color("236"),
 		Error:         lipgloss.Color("203"),
+	}
+}
+
+// Light is the daylight counterpart to Default. The palette assumes a
+// near-white terminal background; selection / diff bars use very pale
+// tints so they sit gently on the bright field instead of punching out.
+func Light() Theme {
+	return Theme{
+		IsDark:        false,
+		Background:    lipgloss.Color("255"),
+		Foreground:    lipgloss.Color("232"),
+		Dim:           lipgloss.Color("245"),
+		Border:        lipgloss.Color("250"),
+		BorderFocused: lipgloss.Color("33"),
+		Accent:        lipgloss.Color("33"),
+		Selected:      lipgloss.Color("232"),
+		SelectedBg:    lipgloss.Color("254"),
+		DiffAdd:       lipgloss.Color("28"),
+		DiffAddBg:     lipgloss.Color("194"), // very light green
+		DiffDel:       lipgloss.Color("124"),
+		DiffDelBg:     lipgloss.Color("224"), // very light red/pink
+		DiffHunk:      lipgloss.Color("62"),
+		DiffFileBg:    lipgloss.Color("253"),
+		StatusBar:     lipgloss.Color("232"),
+		StatusBarBg:   lipgloss.Color("253"),
+		Error:         lipgloss.Color("160"),
 	}
 }
 

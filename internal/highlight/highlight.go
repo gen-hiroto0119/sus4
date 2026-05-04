@@ -37,7 +37,9 @@ type Result struct {
 // Highlight returns ANSI-colored output for content keyed by filename.
 // Filename drives lexer detection; an empty filename triggers content
 // analysis. terminalTrueColor selects the 24-bit formatter when true.
-func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
+// dark picks a chroma + glamour style that reads well on a dark vs.
+// light terminal background.
+func Highlight(filename string, content []byte, terminalTrueColor, dark bool) Result {
 	if isBinary(content) {
 		return Result{Text: "Binary file", Plain: true, Binary: true, Reason: "binary"}
 	}
@@ -49,7 +51,7 @@ func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
 	// view of the raw source — tetra is a viewer for non-writers, so a
 	// reading-mode display is what actually helps.
 	if isMarkdown(filename) {
-		if out, err := renderMarkdown(content); err == nil {
+		if out, err := renderMarkdown(content, dark); err == nil {
 			return Result{Text: out}
 		}
 		// Fall through to chroma if glamour fails for any reason —
@@ -57,7 +59,7 @@ func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
 	}
 
 	lexer := pickLexer(filename, content)
-	style := styles.Get("monokai")
+	style := styles.Get(chromaStyleName(dark))
 	if style == nil {
 		style = styles.Fallback
 	}
@@ -80,6 +82,16 @@ func Highlight(filename string, content []byte, terminalTrueColor bool) Result {
 		return Result{Text: string(content), Plain: true, Reason: "format failed"}
 	}
 	return Result{Text: buf.String()}
+}
+
+// chromaStyleName picks a chroma palette suited to the host background.
+// monokai is the long-standing dark default; github reads well on a
+// near-white field without pushing accents into the high-contrast zone.
+func chromaStyleName(dark bool) string {
+	if dark {
+		return "monokai"
+	}
+	return "github"
 }
 
 func pickLexer(filename string, content []byte) chroma.Lexer {
@@ -127,14 +139,14 @@ const markdownWrapWidth = 100
 // Multi-line constructs (block comments, here-docs) lose context — that
 // is the trade-off of single-line highlighting. Acceptable for now;
 // move to whole-hunk highlighting later if it shows in real use.
-func NewLineHighlighter(filename string, trueColor bool) func(string) string {
+func NewLineHighlighter(filename string, trueColor, dark bool) func(string) string {
 	lexer := lexers.Match(filename)
 	if lexer == nil {
 		lexer = lexers.Fallback
 	}
 	lexer = chroma.Coalesce(lexer)
 
-	style := styles.Get("monokai")
+	style := styles.Get(chromaStyleName(dark))
 	if style == nil {
 		style = styles.Fallback
 	}
@@ -172,9 +184,13 @@ func isMarkdown(filename string) bool {
 	return false
 }
 
-func renderMarkdown(content []byte) (string, error) {
+func renderMarkdown(content []byte, dark bool) (string, error) {
+	style := "dark"
+	if !dark {
+		style = "light"
+	}
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle("dark"),
+		glamour.WithStandardStyle(style),
 		glamour.WithWordWrap(markdownWrapWidth),
 	)
 	if err != nil {
